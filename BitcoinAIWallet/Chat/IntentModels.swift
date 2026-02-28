@@ -238,6 +238,40 @@ enum TipCategory: String, CaseIterable {
     case education
 }
 
+// MARK: - InlineActionType
+
+/// Types of inline action buttons that appear inside AI chat bubbles.
+enum InlineActionType: String, Equatable {
+    case pasteAddress
+    case scanQR
+    case copyText
+    case shareText
+}
+
+// MARK: - InlineAction
+
+/// A tappable inline button rendered inside an AI chat bubble.
+/// Used during active flows (send, receive) and hidden in history.
+struct InlineAction: Equatable, Identifiable {
+    let id: String
+    let icon: String
+    let label: String
+    let type: InlineActionType
+    var context: String?
+
+    init(icon: String, label: String, type: InlineActionType, context: String? = nil) {
+        self.id = UUID().uuidString
+        self.icon = icon
+        self.label = label
+        self.type = type
+        self.context = context
+    }
+
+    static func == (lhs: InlineAction, rhs: InlineAction) -> Bool {
+        lhs.type == rhs.type && lhs.label == rhs.label && lhs.context == rhs.context
+    }
+}
+
 // MARK: - ActionButton
 
 /// An interactive suggestion button displayed below AI responses.

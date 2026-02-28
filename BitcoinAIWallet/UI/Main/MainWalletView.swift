@@ -138,6 +138,11 @@ struct MainWalletView: View {
                 chatViewModel.appendResponses(responses)
             }
         }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .openQRScannerForSend)
+        ) { _ in
+            showQRScanner = true
+        }
         .sheet(isPresented: $showQRScanner) {
             QRScannerView { scannedText in
                 chatViewModel.inputText = scannedText

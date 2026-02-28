@@ -184,6 +184,7 @@ struct MessageBubbleView: View {
 
 /// AI text bubble with typing animation for new messages.
 /// Old messages from history display instantly without animation.
+/// Shows inline action buttons when present (e.g., Paste/Scan during send flow).
 private struct AnimatedAIBubble: View {
     let message: ChatMessage
     @EnvironmentObject private var chatViewModel: ChatViewModel
@@ -195,6 +196,13 @@ private struct AnimatedAIBubble: View {
 
     private var spacerMinWidth: CGFloat {
         UIScreen.main.bounds.width * 0.04
+    }
+
+    /// Whether to show inline action buttons for this message.
+    private var showInlineActions: Bool {
+        guard let actions = message.inlineActions, !actions.isEmpty else { return false }
+        guard message.isNew && !message.inlineActionsUsed else { return false }
+        return !animator.isAnimating
     }
 
     var body: some View {
@@ -214,6 +222,13 @@ private struct AnimatedAIBubble: View {
                 // Animated or instant text
                 FormattedMessageView(content: animator.displayedText)
                     .padding(.vertical, AppSpacing.xs)
+
+                // Inline action buttons (e.g., Paste/Scan during send flow)
+                if showInlineActions, let actions = message.inlineActions {
+                    InlineActionButtons(actions: actions) { action in
+                        chatViewModel.handleInlineAction(action, messageId: message.id)
+                    }
+                }
             }
             .frame(maxWidth: bubbleMaxWidth, alignment: .leading)
 

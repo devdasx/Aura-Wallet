@@ -169,6 +169,10 @@ enum L10n {
         static var usdEquivalent: String { localizedString("send.usd_equivalent") }
         static var satPerVbyte: String { localizedString("send.sat_per_vbyte") }
         static var minutes: String { localizedString("send.minutes") }
+        static var pasteClipboard: String { localizedString("send.paste_clipboard") }
+        static var scanQR: String { localizedString("send.scan_qr") }
+        static var clipboardEmpty: String { localizedString("send.clipboard_empty") }
+        static var clipboardInvalid: String { localizedString("send.clipboard_invalid") }
     }
 
     // MARK: - Receive

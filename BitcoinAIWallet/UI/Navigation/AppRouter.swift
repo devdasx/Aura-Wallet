@@ -544,4 +544,7 @@ extension Notification.Name {
 
     /// Request a full wallet refresh (triggered from chat commands like "refresh", "reload").
     static let walletRefreshRequested = Notification.Name("com.bitcoinai.wallet.walletRefreshRequested")
+
+    /// Open QR scanner from inline action button during send flow.
+    static let openQRScannerForSend = Notification.Name("com.bitcoinai.wallet.openQRScannerForSend")
 }

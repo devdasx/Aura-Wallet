@@ -118,6 +118,10 @@
 "send.usd_equivalent" = "USD Equivalent";
 "send.sat_per_vbyte" = "sat/vB";
 "send.minutes" = "minutes";
+"send.paste_clipboard" = "Paste Clipboard";
+"send.scan_qr" = "Scan QR Code";
+"send.clipboard_empty" = "Nothing in clipboard";
+"send.clipboard_invalid" = "Clipboard doesn't contain a valid Bitcoin address";
 
 // MARK: - Receive
 

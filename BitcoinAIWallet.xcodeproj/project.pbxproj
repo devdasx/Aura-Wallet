@@ -31,6 +31,7 @@
 		2C57C3FCD9914D07B6763ADC /* ErrorHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C9C904D2E836F35BC08E470 /* ErrorHandler.swift */; };
 		2FE86F1244FC749EDEC2BD26 /* EllipticCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = 841D49D709E347B788D7E2AA /* EllipticCurve.swift */; };
 		304EC4B5781885A24E7A547E /* AddressValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 283D48A77C9DC7BDCDAF939B /* AddressValidator.swift */; };
+		3140912AC2062141BE9192D2 /* InlineActionButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0152378DC160249A3345217 /* InlineActionButtons.swift */; };
 		316423968B2E8CF162F83A09 /* ResponseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3579FDC4DE7A99287DE22A2B /* ResponseParser.swift */; };
 		336E5EFA5BABE0AACB9B2BE0 /* workspace-state.json in Resources */ = {isa = PBXBuildFile; fileRef = 6906B55DA1BB5D2EF4310E03 /* workspace-state.json */; };
 		340600F5898243F26D6B99EE /* AppColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3137CC0BEC1A3F3D635600B2 /* AppColors.swift */; };
@@ -223,6 +224,7 @@
 		93DE5C47EDE16067457BA77C /* BulletPointView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BulletPointView.swift; sourceTree = "<group>"; };
 		9C9C904D2E836F35BC08E470 /* ErrorHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorHandler.swift; sourceTree = "<group>"; };
 		9CF73848EEE04C5076DB4314 /* TipsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipsCard.swift; sourceTree = "<group>"; };
+		A0152378DC160249A3345217 /* InlineActionButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineActionButtons.swift; sourceTree = "<group>"; };
 		A3034664B84B776FCA27ED3C /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		A9113CB7FC604702A9B26D97 /* AppIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIcons.swift; sourceTree = "<group>"; };
 		AAF6249962A810D1A2393D39 /* MessageFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageFormatter.swift; sourceTree = "<group>"; };
@@ -343,6 +345,7 @@
 				02FACE7B2B7701BC784DBBEB /* AIProcessingIndicator.swift */,
 				7BB03362EB4A74D6B8E8AFEF /* ChatInputBar.swift */,
 				AE09AD1DB5D2BA2209ECD67B /* ChatView.swift */,
+				A0152378DC160249A3345217 /* InlineActionButtons.swift */,
 				CB03F05FC6449BE77930BD2A /* MessageBubbleView.swift */,
 				B182E9B10C9A9BFF09AB5E1E /* NewChatWelcomeView.swift */,
 				72D1AB398115AFE16383512A /* QRScannerView.swift */,
@@ -800,6 +803,7 @@
 				E33C4CBBC20893C34508E448 /* HapticManager.swift in Sources */,
 				2BE0B12DB5DA20F735D6EC31 /* HeroAmountView.swift in Sources */,
 				BEB0D970C44C98CE30092D84 /* ImportWalletView.swift in Sources */,
+				3140912AC2062141BE9192D2 /* InlineActionButtons.swift in Sources */,
 				9189FB71B1BF26122D6E382B /* InlineAddressView.swift in Sources */,
 				83EA93E49F2BE179B5E5EC91 /* IntentModels.swift in Sources */,
 				CE6F70F5279F8397E3BF88E6 /* IntentParser.swift in Sources */,

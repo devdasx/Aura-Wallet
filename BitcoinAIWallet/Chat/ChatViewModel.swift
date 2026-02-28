@@ -25,13 +25,21 @@ struct ChatMessage: Identifiable, Equatable {
     /// Messages loaded from history have this set to `false`.
     var isNew: Bool
 
-    init(id: UUID = UUID(), content: String, isFromUser: Bool, timestamp: Date = Date(), responseType: ResponseType? = nil, isNew: Bool = true) {
+    /// Inline action buttons displayed inside the AI bubble (e.g., Paste/Scan during send flow).
+    /// Only shown during active flows, not in loaded conversation history.
+    var inlineActions: [InlineAction]?
+
+    /// Whether the inline action buttons have been used (hides them after use).
+    var inlineActionsUsed: Bool = false
+
+    init(id: UUID = UUID(), content: String, isFromUser: Bool, timestamp: Date = Date(), responseType: ResponseType? = nil, isNew: Bool = true, inlineActions: [InlineAction]? = nil) {
         self.id = id
         self.content = content
         self.isFromUser = isFromUser
         self.timestamp = timestamp
         self.responseType = responseType
         self.isNew = isNew
+        self.inlineActions = inlineActions
     }
 
     static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
@@ -554,7 +562,7 @@ final class ChatViewModel: ObservableObject {
 
     func appendResponses(_ responses: [ResponseType]) {
         for response in responses {
-            let chatMsg: ChatMessage
+            var chatMsg: ChatMessage
             switch response {
             case .text(let text):
                 chatMsg = .ai(text)
@@ -569,8 +577,95 @@ final class ChatViewModel: ObservableObject {
                     conversationManager?.persistMessage(role: "assistant", content: chatMsg.content)
                 }
             }
+
+            // Attach inline action buttons based on conversation state
+            chatMsg.inlineActions = inlineActionsForCurrentState(response: response)
+
             messages.append(chatMsg)
         }
+    }
+
+    // MARK: - Inline Action Buttons
+
+    /// Determines which inline action buttons to attach based on conversation state.
+    private func inlineActionsForCurrentState(response: ResponseType) -> [InlineAction]? {
+        switch conversationState {
+        case .awaitingAddress:
+            // Only attach to text responses (the "which address?" prompt)
+            if case .text = response {
+                return [
+                    InlineAction(
+                        icon: "doc.on.clipboard",
+                        label: L10n.Send.pasteClipboard,
+                        type: .pasteAddress
+                    ),
+                    InlineAction(
+                        icon: "qrcode.viewfinder",
+                        label: L10n.Send.scanQR,
+                        type: .scanQR
+                    ),
+                ]
+            }
+        default:
+            break
+        }
+        return nil
+    }
+
+    /// Handles taps on inline action buttons inside AI chat bubbles.
+    func handleInlineAction(_ action: InlineAction, messageId: UUID) {
+        // Mark buttons as used on the source message
+        if let index = messages.firstIndex(where: { $0.id == messageId }) {
+            messages[index].inlineActionsUsed = true
+        }
+
+        switch action.type {
+        case .pasteAddress:
+            handlePasteForSend()
+        case .scanQR:
+            NotificationCenter.default.post(name: .openQRScannerForSend, object: nil)
+        case .copyText:
+            if let text = action.context {
+                copyAddress(text)
+            }
+        case .shareText:
+            if let text = action.context {
+                shareText(text)
+            }
+        }
+    }
+
+    /// Reads clipboard, validates as Bitcoin address or BIP21 URI, and injects into send flow.
+    private func handlePasteForSend() {
+        guard let content = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !content.isEmpty else {
+            appendResponses([.errorText(L10n.Send.clipboardEmpty)])
+            HapticManager.error()
+            return
+        }
+
+        // Try BIP21 URI first
+        if let parsed = BIP21Parser.parse(content) {
+            var command = parsed.address
+            if let amount = parsed.amount {
+                command = "send \(amount) BTC to \(parsed.address)"
+            }
+            HapticManager.success()
+            sendMessage(command)
+            return
+        }
+
+        // Try plain Bitcoin address
+        let validator = AddressValidator()
+        if validator.isValid(content) {
+            HapticManager.success()
+            sendMessage(content)
+            return
+        }
+
+        // Not a valid address
+        appendResponses([.errorText(L10n.Send.clipboardInvalid)])
+        HapticManager.error()
     }
 
     // MARK: - Processing Card Helpers
