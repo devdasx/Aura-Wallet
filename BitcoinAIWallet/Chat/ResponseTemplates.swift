@@ -71,6 +71,16 @@ struct ResponseTemplates {
         ])
     }
 
+    /// First interaction response — user's first message after the welcome greeting.
+    /// Warm, tells them what we can do.
+    static func firstInteractionResponse() -> String {
+        pick([
+            "Hey! I can help you **send**, **receive**, check your **balance**, **fees**, **price** — just ask!",
+            "Hi there! Just tell me what you need — **balance**, **send**, **receive**, **fees**, or anything else.",
+            "Hey! Ask me anything — check your **balance**, **send** Bitcoin, view **fees**, get the **price**, and more.",
+        ])
+    }
+
     /// Response to positive social interactions (lol, haha, etc.)
     static func socialPositiveResponse() -> String {
         pick([

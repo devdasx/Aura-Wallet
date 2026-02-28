@@ -595,8 +595,13 @@ final class ResponseGenerator {
             }
         }
 
-        // The welcome greeting is already shown by addGreeting().
-        // Any subsequent greeting intent ("hi", "hello") gets a social response.
+        // First user message after welcome → warm intro of what we can do
+        let userTurns = mem.turns.filter { $0.role == .user }.count
+        if userTurns <= 1 {
+            return [.text(ResponseTemplates.firstInteractionResponse())]
+        }
+
+        // Later greeting mid-conversation → social response
         return [.text(ResponseTemplates.socialPositiveResponse())]
     }
 
