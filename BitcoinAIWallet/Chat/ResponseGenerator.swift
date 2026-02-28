@@ -251,17 +251,6 @@ final class ResponseGenerator {
             responses = generateSmartFallback(context: context)
         }
 
-        // Append a contextual command-discovery tip
-        if shouldAppendTip(for: intent) {
-            let tip = tipsEngine.contextualTip(for: intent)
-            responses.append(.tipsCard(tip: tip))
-        }
-
-        // Append contextual action buttons
-        if let buttons = generateActionButtons(for: intent, context: context) {
-            responses.append(.actionButtons(buttons: buttons))
-        }
-
         return responses
     }
 
@@ -521,64 +510,6 @@ final class ResponseGenerator {
 
     private func generateSmartFallback(context: ConversationContext) -> [ResponseType] {
         return [.text(ResponseTemplates.smartFallback())]
-    }
-
-    // MARK: - Tips Logic
-
-    private func shouldAppendTip(for intent: WalletIntent) -> Bool {
-        guard UserPreferences.shared.tipsEnabled else { return false }
-        switch intent {
-        case .confirmAction, .cancelAction, .unknown, .greeting:
-            return false
-        default:
-            return true
-        }
-    }
-
-    // MARK: - Action Buttons
-
-    private func generateActionButtons(for intent: WalletIntent, context: ConversationContext) -> [ActionButton]? {
-        switch intent {
-        case .balance:
-            return [
-                ActionButton(label: L10n.QuickAction.send, command: "send", icon: "arrow.up.right"),
-                ActionButton(label: L10n.QuickAction.receive, command: "receive", icon: "arrow.down.left"),
-                ActionButton(label: L10n.QuickAction.history, command: "history", icon: "clock"),
-            ]
-        case .receive:
-            return [
-                ActionButton(label: L10n.Receive.newAddress, command: "new address", icon: "plus"),
-                ActionButton(label: L10n.Wallet.balance, command: "balance", icon: "chart.bar"),
-            ]
-        case .greeting:
-            return [
-                ActionButton(label: L10n.Wallet.balance, command: "balance", icon: "chart.bar"),
-                ActionButton(label: L10n.QuickAction.send, command: "send", icon: "arrow.up.right"),
-                ActionButton(label: L10n.QuickAction.receive, command: "receive", icon: "arrow.down.left"),
-            ]
-        case .help:
-            return [
-                ActionButton(label: L10n.Wallet.balance, command: "balance", icon: "chart.bar"),
-                ActionButton(label: L10n.QuickAction.fees, command: "fees", icon: "speedometer"),
-                ActionButton(label: "Price", command: "price", icon: "chart.line.uptrend.xyaxis"),
-            ]
-        case .feeEstimate:
-            return [
-                ActionButton(label: L10n.QuickAction.send, command: "send", icon: "arrow.up.right"),
-            ]
-        case .history:
-            return [
-                ActionButton(label: L10n.Wallet.balance, command: "balance", icon: "chart.bar"),
-            ]
-        case .unknown:
-            return [
-                ActionButton(label: L10n.QuickAction.send, command: "send", icon: "arrow.up.right"),
-                ActionButton(label: L10n.Wallet.balance, command: "balance", icon: "chart.bar"),
-                ActionButton(label: "Help", command: "help", icon: "questionmark.circle"),
-            ]
-        default:
-            return nil
-        }
     }
 
     // MARK: - Private Helpers

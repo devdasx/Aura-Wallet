@@ -4,9 +4,14 @@ import SwiftUI
 // Main scrollable chat message list.
 // Messages scroll from bottom; new messages auto-scroll into view.
 // Displays a date separator, message bubbles, and a typing indicator.
+// Auto-scrolls during typing animation unless the user has scrolled up.
 
 struct ChatView: View {
     @ObservedObject var viewModel: ChatViewModel
+
+    /// Tracks whether the user has manually scrolled away from the bottom.
+    /// When true, auto-scroll is suppressed so we don't fight user intent.
+    @State private var isNearBottom: Bool = true
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -53,6 +58,13 @@ struct ChatView: View {
                         TypingIndicator()
                             .id("typing")
                     }
+
+                    // Bottom anchor for scroll-position detection
+                    Color.clear
+                        .frame(height: 1)
+                        .id("bottom")
+                        .onAppear { isNearBottom = true }
+                        .onDisappear { isNearBottom = false }
                 }
                 .padding(.horizontal, AppSpacing.lg)
                 .padding(.top, AppSpacing.md)
@@ -76,6 +88,13 @@ struct ChatView: View {
                     withAnimation(.easeOut(duration: 0.3)) {
                         proxy.scrollTo("processing", anchor: .bottom)
                     }
+                }
+            }
+            // Auto-scroll during typing animation (every ~10 characters)
+            .onReceive(NotificationCenter.default.publisher(for: .typingAnimationProgress)) { _ in
+                guard isNearBottom else { return }
+                withAnimation(.easeOut(duration: 0.15)) {
+                    scrollToBottom(proxy: proxy)
                 }
             }
         }

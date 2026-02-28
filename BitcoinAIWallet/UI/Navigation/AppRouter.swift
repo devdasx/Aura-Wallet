@@ -547,4 +547,7 @@ extension Notification.Name {
 
     /// Open QR scanner from inline action button during send flow.
     static let openQRScannerForSend = Notification.Name("com.bitcoinai.wallet.openQRScannerForSend")
+
+    /// Typing animation progress — triggers auto-scroll in ChatView.
+    static let typingAnimationProgress = Notification.Name("com.bitcoinai.wallet.typingAnimationProgress")
 }

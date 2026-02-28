@@ -20,6 +20,7 @@ struct SettingsView: View {
     @State private var showBackupView = false
     @State private var showSecuritySettings = false
     @State private var showNetworkSettings = false
+    @State private var showCommandsReference = false
 
     // MARK: - Body
 
@@ -89,6 +90,23 @@ struct SettingsView: View {
                         ToolbarItem(placement: .navigationBarLeading) {
                             Button(action: {
                                 showNetworkSettings = false
+                            }) {
+                                Image(systemName: AppIcons.close)
+                                    .font(AppTypography.bodyMedium)
+                                    .foregroundColor(AppColors.textPrimary)
+                            }
+                        }
+                    }
+            }
+            .tint(AppColors.accent)
+        }
+        .sheet(isPresented: $showCommandsReference) {
+            NavigationStack {
+                CommandsReferenceView()
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button(action: {
+                                showCommandsReference = false
                             }) {
                                 Image(systemName: AppIcons.close)
                                     .font(AppTypography.bodyMedium)
@@ -300,6 +318,27 @@ struct SettingsView: View {
                     .onChange(of: preferences.typingHapticsEnabled) { _, _ in
                         HapticManager.selection()
                     }
+            }
+            .listRowBackground(AppColors.backgroundCard)
+
+            // Commands reference
+            Button(action: {
+                HapticManager.buttonTap()
+                showCommandsReference = true
+            }) {
+                HStack(spacing: AppSpacing.md) {
+                    settingsIcon("text.book.closed.fill", color: AppColors.info)
+
+                    Text("Commands Reference")
+                        .font(AppTypography.bodyMedium)
+                        .foregroundColor(AppColors.textPrimary)
+
+                    Spacer()
+
+                    Image(systemName: AppIcons.chevronRight)
+                        .font(AppTypography.labelSmall)
+                        .foregroundColor(AppColors.textTertiary)
+                }
             }
             .listRowBackground(AppColors.backgroundCard)
         } header: {

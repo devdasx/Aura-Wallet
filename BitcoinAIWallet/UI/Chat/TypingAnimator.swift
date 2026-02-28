@@ -48,6 +48,9 @@ final class TypingAnimator: ObservableObject {
     /// Number of characters between haptic pulses.
     private let hapticInterval: Int = 5
 
+    /// Number of characters between scroll notifications.
+    private let scrollNotifyInterval: Int = 10
+
     // MARK: - Public API
 
     /// Start typing out the given text character by character.
@@ -78,6 +81,11 @@ final class TypingAnimator: ObservableObject {
                 // Haptic pulse every ~5 characters
                 if charCount % self.hapticInterval == 0 {
                     self.triggerTypingHaptic()
+                }
+
+                // Notify ChatView to auto-scroll every ~10 characters
+                if charCount % self.scrollNotifyInterval == 0 {
+                    NotificationCenter.default.post(name: .typingAnimationProgress, object: nil)
                 }
 
                 // Variable delay based on punctuation

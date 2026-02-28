@@ -65,6 +65,7 @@
 		72BE072B992F2C564DF1D5EE /* BlockbookModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F19399E5E23E67EB83B3C71 /* BlockbookModels.swift */; };
 		73E8529E2EDF9F44D0FCCD7B /* Wallet.swiftdoc in Resources */ = {isa = PBXBuildFile; fileRef = 23BF12AA214F115AEEE1C8F8 /* Wallet.swiftdoc */; };
 		774187AFF7FD58BC735BB243 /* NetworkSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 277594922123F2564DC6521E /* NetworkSettingsView.swift */; };
+		7A1C132C3753B2F9EF319606 /* CommandsReferenceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB41F35360A71EF05B740B2 /* CommandsReferenceView.swift */; };
 		7A552196AA29E206B9029459 /* MessageFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAF6249962A810D1A2393D39 /* MessageFormatter.swift */; };
 		7C83DBEF059C0062BD9F8D23 /* BlockbookEndpoints.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EFCB047B7D181D272F111F1 /* BlockbookEndpoints.swift */; };
 		7D2EF3FA70C48EAE2A6AA5A7 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3034664B84B776FCA27ED3C /* KeychainManager.swift */; };
@@ -217,6 +218,7 @@
 		86147397645DD631A992C02E /* TransactionConfirmCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionConfirmCard.swift; sourceTree = "<group>"; };
 		8975185D5ADDE942DEFA1E5F /* TransactionBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionBuilder.swift; sourceTree = "<group>"; };
 		8B710D972CF6CF76563EECFA /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
+		8BB41F35360A71EF05B740B2 /* CommandsReferenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandsReferenceView.swift; sourceTree = "<group>"; };
 		8D08FB72521B6407A99EB252 /* ECDSASigner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ECDSASigner.swift; sourceTree = "<group>"; };
 		8F19399E5E23E67EB83B3C71 /* BlockbookModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockbookModels.swift; sourceTree = "<group>"; };
 		9170289C5AA5C69E24672C3D /* WalletModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletModel.swift; sourceTree = "<group>"; };
@@ -444,6 +446,7 @@
 			isa = PBXGroup;
 			children = (
 				8B710D972CF6CF76563EECFA /* BackupView.swift */,
+				8BB41F35360A71EF05B740B2 /* CommandsReferenceView.swift */,
 				277594922123F2564DC6521E /* NetworkSettingsView.swift */,
 				F46F4D575A8B58079E2E60A2 /* SecuritySettingsView.swift */,
 				5F85D37B90F2BFF0BF67C35B /* SettingsView.swift */,
@@ -781,6 +784,7 @@
 				4916AEB1F4CE2AB5429AFF28 /* ChatInputBar.swift in Sources */,
 				A0934E04C08B2EA65ACABE0F /* ChatView.swift in Sources */,
 				9473E46110B0860BED974211 /* ChatViewModel.swift in Sources */,
+				7A1C132C3753B2F9EF319606 /* CommandsReferenceView.swift in Sources */,
 				0EA4DDD5CAAC0D686D6D3967 /* Constants.swift in Sources */,
 				CDC89EEEF359CE3AC28A7CDB /* ConversationFlow.swift in Sources */,
 				CB834844A3B81ECEB826B591 /* ConversationManager.swift in Sources */,
