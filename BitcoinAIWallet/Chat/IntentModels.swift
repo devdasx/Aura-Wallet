@@ -292,3 +292,145 @@ struct ActionButton: Equatable, Identifiable {
         lhs.label == rhs.label && lhs.command == rhs.command
     }
 }
+
+// MARK: - Conversation Role
+
+/// Identifies the speaker of a conversation turn.
+enum ConversationRole: String, Equatable {
+    case user
+    case assistant
+}
+
+// MARK: - IntentScore
+
+/// A scored intent classification from a single signal source.
+struct IntentScore: Comparable {
+    let intent: WalletIntent
+    let confidence: Double
+    let source: String
+
+    static func < (lhs: IntentScore, rhs: IntentScore) -> Bool {
+        lhs.confidence < rhs.confidence
+    }
+}
+
+// MARK: - ClassificationResult
+
+/// The result of scoring an input across all signal sources.
+struct ClassificationResult {
+    let intent: WalletIntent
+    let confidence: Double
+    let needsClarification: Bool
+    let alternatives: [IntentScore]
+}
+
+// MARK: - SignalWeight
+
+/// Weights for each classification signal source.
+/// Context and entity presence always beat raw keywords.
+enum SignalWeight {
+    static let keyword: Double = 0.6
+    static let entityPresence: Double = 0.7
+    static let context: Double = 0.95
+    static let reference: Double = 0.85
+    static let semantic: Double = 0.5
+    static let social: Double = 0.7
+    static let negation: Double = 0.5
+}
+
+// MARK: - ResolvedEntity
+
+/// An entity resolved from conversation memory references.
+enum ResolvedEntity {
+    case address(String)
+    case amount(Decimal, BitcoinUnit)
+    case intent(WalletIntent)
+    case transaction(TransactionDisplayItem)
+}
+
+// MARK: - ShownData
+
+/// Tracks what data was shown to the user in a response.
+struct ShownData {
+    var balance: Decimal?
+    var fiatBalance: Decimal?
+    var transactions: [TransactionDisplayItem]?
+    var feeEstimates: (slow: Decimal, medium: Decimal, fast: Decimal)?
+    var receiveAddress: String?
+    var sentTransaction: (txid: String, amount: Decimal, address: String, fee: Decimal)?
+}
+
+// MARK: - ConversationTurn
+
+/// A single turn in the conversation history stored in memory.
+struct ConversationTurn {
+    let role: ConversationRole
+    let text: String
+    let intent: WalletIntent?
+    let entities: ParsedEntity
+    let timestamp: Date
+}
+
+// MARK: - WalletIntent Helpers
+
+extension WalletIntent {
+    /// A human-readable name for display in clarification prompts.
+    var friendlyName: String {
+        switch self {
+        case .balance: return "balance"
+        case .send: return "sending Bitcoin"
+        case .receive: return "receiving Bitcoin"
+        case .history: return "transaction history"
+        case .feeEstimate: return "fee estimates"
+        case .price: return "Bitcoin price"
+        case .convertAmount: return "currency conversion"
+        case .newAddress: return "generating a new address"
+        case .walletHealth: return "wallet health"
+        case .exportHistory: return "exporting history"
+        case .utxoList: return "UTXOs"
+        case .bumpFee: return "fee bumping"
+        case .networkStatus: return "network status"
+        case .settings: return "settings"
+        case .help: return "help"
+        case .about: return "about"
+        case .confirmAction: return "confirmation"
+        case .cancelAction: return "cancellation"
+        case .hideBalance: return "hiding balance"
+        case .showBalance: return "showing balance"
+        case .refreshWallet: return "wallet refresh"
+        case .greeting: return "greeting"
+        case .transactionDetail: return "transaction details"
+        case .unknown: return "something"
+        }
+    }
+
+    /// A unique key for grouping scores by intent type.
+    var intentKey: String {
+        switch self {
+        case .send: return "send"
+        case .balance: return "balance"
+        case .receive: return "receive"
+        case .history: return "history"
+        case .feeEstimate: return "feeEstimate"
+        case .price: return "price"
+        case .convertAmount: return "convertAmount"
+        case .newAddress: return "newAddress"
+        case .walletHealth: return "walletHealth"
+        case .exportHistory: return "exportHistory"
+        case .utxoList: return "utxoList"
+        case .bumpFee: return "bumpFee"
+        case .networkStatus: return "networkStatus"
+        case .settings: return "settings"
+        case .help: return "help"
+        case .about: return "about"
+        case .confirmAction: return "confirmAction"
+        case .cancelAction: return "cancelAction"
+        case .hideBalance: return "hideBalance"
+        case .showBalance: return "showBalance"
+        case .refreshWallet: return "refreshWallet"
+        case .greeting: return "greeting"
+        case .transactionDetail: return "transactionDetail"
+        case .unknown: return "unknown"
+        }
+    }
+}

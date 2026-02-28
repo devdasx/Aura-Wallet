@@ -579,4 +579,150 @@ final class PatternMatcher {
         if matchesAny(text, patterns: helpPatterns) { return true }
         return false
     }
+
+    // MARK: - Social Detection
+
+    /// Detects "thank you", "thanks", "awesome", etc.
+    private let socialPositiveKeywords: [String] = [
+        "thanks", "thank you", "thx", "ty", "awesome", "great", "cool", "nice",
+        "perfect", "wonderful", "good job", "well done", "appreciate",
+        "شكرا", "شكرًا", "ممتاز", "رائع",
+        "gracias", "genial", "perfecto", "excelente",
+    ]
+
+    /// Detects complaints and frustration.
+    private let socialNegativeKeywords: [String] = [
+        "broken", "not working", "doesn't work", "wrong", "bad",
+        "confused", "i don't understand", "this is broken", "bug",
+        "error", "frustrated", "annoying", "useless",
+    ]
+
+    func isSocialPositive(_ text: String) -> Bool {
+        containsAny(text, keywords: socialPositiveKeywords)
+    }
+
+    func isSocialNegative(_ text: String) -> Bool {
+        containsAny(text, keywords: socialNegativeKeywords)
+    }
+
+    /// Detects negation / hesitation in text.
+    func containsNegation(_ text: String) -> Bool {
+        let negations = [
+            "not sure", "don't want", "don't think", "i'm not", "im not",
+            "maybe not", "not yet", "shouldn't", "wouldn't", "i won't",
+            "changed my mind", "not ready", "hold on",
+        ]
+        return negations.contains(where: { text.contains($0) })
+    }
+
+    // MARK: - Scored Matching
+
+    /// Returns scored intent matches for all intent categories.
+    /// Each match includes a confidence score based on the signal weight.
+    func scoredMatch(_ text: String) -> [IntentScore] {
+        var scores: [IntentScore] = []
+
+        // Confirmation / Cancellation — highest priority with high confidence
+        if isConfirmation(text) {
+            scores.append(IntentScore(intent: .confirmAction, confidence: 0.9, source: "keyword"))
+        }
+        if isCancellation(text) {
+            scores.append(IntentScore(intent: .cancelAction, confidence: 0.9, source: "keyword"))
+        }
+
+        // Greeting
+        if isGreeting(text) {
+            scores.append(IntentScore(intent: .greeting, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // Send
+        if isSendIntent(text) {
+            scores.append(IntentScore(intent: .send(amount: nil, unit: nil, address: nil, feeLevel: nil), confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // Price
+        if isPriceIntent(text) {
+            scores.append(IntentScore(intent: .price(currency: nil), confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // New Address (before generic receive)
+        if isNewAddressIntent(text) {
+            scores.append(IntentScore(intent: .newAddress, confidence: SignalWeight.keyword + 0.05, source: "keyword"))
+        }
+
+        // Receive
+        if isReceiveIntent(text) {
+            scores.append(IntentScore(intent: .receive, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // Hide / Show balance
+        if isHideBalanceIntent(text) {
+            scores.append(IntentScore(intent: .hideBalance, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+        if isShowBalanceIntent(text) {
+            scores.append(IntentScore(intent: .showBalance, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // Refresh
+        if isRefreshIntent(text) {
+            scores.append(IntentScore(intent: .refreshWallet, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // Balance
+        if isBalanceIntent(text) {
+            scores.append(IntentScore(intent: .balance, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // Export
+        if isExportIntent(text) {
+            scores.append(IntentScore(intent: .exportHistory, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // History
+        if isHistoryIntent(text) {
+            scores.append(IntentScore(intent: .history(count: nil), confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // Bump fee
+        if isBumpFeeIntent(text) {
+            scores.append(IntentScore(intent: .bumpFee(txid: nil), confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // Fee
+        if isFeeIntent(text) {
+            scores.append(IntentScore(intent: .feeEstimate, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // Wallet health
+        if isWalletHealthIntent(text) {
+            scores.append(IntentScore(intent: .walletHealth, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // UTXO
+        if isUTXOIntent(text) {
+            scores.append(IntentScore(intent: .utxoList, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // Network status
+        if isNetworkStatusIntent(text) {
+            scores.append(IntentScore(intent: .networkStatus, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // About
+        if isAboutIntent(text) {
+            scores.append(IntentScore(intent: .about, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // Settings
+        if isSettingsIntent(text) {
+            scores.append(IntentScore(intent: .settings, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        // Help
+        if isHelpIntent(text) {
+            scores.append(IntentScore(intent: .help, confidence: SignalWeight.keyword, source: "keyword"))
+        }
+
+        return scores
+    }
 }

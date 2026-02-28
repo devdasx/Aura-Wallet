@@ -1,36 +1,28 @@
 // MARK: - IntentParser.swift
 // Bitcoin AI Wallet
 //
-// Parses natural language user input into structured wallet intents.
-// Uses regex and keyword matching — NO AI/LLM API calls.
-// Supports English, Arabic, and Spanish with typo tolerance.
+// Scored intent classifier with 7 signal sources:
+// 1. Keyword matching (PatternMatcher — existing keyword lists)
+// 2. Entity presence (address → send, txid → transaction detail)
+// 3. Conversation context (flow state, what was last discussed)
+// 4. Reference resolution (memory-resolved entities boost matching intent)
+// 5. Semantic verb mapping (synonyms, sentence structure)
+// 6. Social/meta detection (thanks, complaints, emoji)
+// 7. Negation detection (reduces confidence of action intents)
 //
-// Priority order:
-// 1. Confirm / Cancel (stateful)
-// 2. Greeting
-// 3. Send (most complex)
-// 4. Price / Convert
-// 5. Receive / New Address
-// 6. Hide / Show balance
-// 7. Refresh
-// 8. Balance
-// 9. History / Export
-// 10. Fee / Bump Fee
-// 11. Wallet Health / UTXO / Network Status
-// 12. Transaction detail (by txid)
-// 13. Settings / About
-// 14. Help
-// 15. Fallback — bare addresses/amounts as implicit send
-// 16. Smart fallback — never say "unknown command"
+// Replaces the old waterfall if/else chain with scored classification.
+// Context (0.95) beats keywords (0.6) beats semantics (0.5).
 //
 // Platform: iOS 17.0+
 // Framework: Foundation
 
 import Foundation
 
-// MARK: - IntentParser
+// MARK: - IntentParser (SmartIntentClassifier)
 
-/// Parses user input text into structured `WalletIntent` values.
+/// Scored intent classifier. Replaces the old waterfall parser.
+/// Each message is classified using 7 signal sources, and the highest-confidence
+/// intent wins. If confidence is below 0.5, the result is flagged for clarification.
 final class IntentParser {
 
     // MARK: - Dependencies
@@ -56,170 +48,413 @@ final class IntentParser {
         self.currencyParser = CurrencyParser()
     }
 
-    // MARK: - Public API
+    // MARK: - Legacy API (backward compatible)
 
-    /// Parses user input text into a structured `WalletIntent`.
+    /// Simple parse without memory context. Falls back to keyword-only classification.
     func parse(_ input: String) -> WalletIntent {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        guard !trimmed.isEmpty else { return .unknown(rawText: input) }
+
+        let normalized = trimmed.lowercased()
+        let entities = entityExtractor.extract(from: trimmed)
+
+        // SIGNAL 1: Keyword scores
+        var allScores = patternMatcher.scoredMatch(normalized)
+
+        // SIGNAL 2: Entity presence
+        allScores += entityPresenceScores(entities, input: trimmed)
+
+        // SIGNAL 5: Semantic scores
+        allScores += semanticScores(normalized)
+
+        // SIGNAL 6: Social scores
+        allScores += socialScores(normalized)
+
+        // SIGNAL 7: Negation penalty
+        allScores = applyNegationPenalty(normalized, scores: allScores)
+
+        // Check for fiat conversion (special case)
+        if let fiat = currencyParser.parseFiatAmount(from: trimmed) {
+            allScores.append(IntentScore(
+                intent: .convertAmount(amount: fiat.amount, fromCurrency: fiat.currencyCode),
+                confidence: SignalWeight.entityPresence,
+                source: "entity_fiat"
+            ))
+        }
+
+        // Bare txid detection
+        if let txid = entityExtractor.extractTxId(from: trimmed) {
+            allScores.append(IntentScore(
+                intent: .transactionDetail(txid: txid),
+                confidence: SignalWeight.entityPresence,
+                source: "entity_txid"
+            ))
+        }
+
+        // Merge and pick best
+        let merged = mergeScores(allScores)
+        guard let best = merged.first else {
             return .unknown(rawText: input)
         }
 
-        let normalized = trimmed.lowercased()
-
-        // 1. Confirm / Cancel — stateful, highest priority
-        if patternMatcher.isConfirmation(normalized) {
-            return .confirmAction
-        }
-        if patternMatcher.isCancellation(normalized) {
-            return .cancelAction
-        }
-
-        // 2. Greeting
-        if patternMatcher.isGreeting(normalized) {
-            return .greeting
-        }
-
-        // 3. Send intent
-        if patternMatcher.isSendIntent(normalized) {
+        // For send intents, enrich with extracted entities
+        if case .send = best.intent {
             return buildSendIntent(from: trimmed)
         }
 
-        // 4. Price / Convert
-        if patternMatcher.isPriceIntent(normalized) {
-            // Check if there's a specific currency mentioned
-            if let fiat = currencyParser.parseFiatAmount(from: trimmed) {
-                return .convertAmount(amount: fiat.amount, fromCurrency: fiat.currencyCode)
-            }
-            let currency = extractCurrencyCode(from: normalized)
-            return .price(currency: currency)
-        }
-
-        // Check for fiat currency amounts — implicit conversion
-        if let fiat = currencyParser.parseFiatAmount(from: trimmed) {
-            // If the text also has a send keyword or address, it's a send in fiat
-            if patternMatcher.isSendIntent(normalized) {
-                return buildSendIntent(from: trimmed)
-            }
-            return .convertAmount(amount: fiat.amount, fromCurrency: fiat.currencyCode)
-        }
-
-        // 5a. New Address (before generic receive)
-        if patternMatcher.isNewAddressIntent(normalized) {
-            return .newAddress
-        }
-
-        // 5b. Receive intent
-        if patternMatcher.isReceiveIntent(normalized) {
-            return .receive
-        }
-
-        // 6a. Hide balance
-        if patternMatcher.isHideBalanceIntent(normalized) {
-            return .hideBalance
-        }
-
-        // 6b. Show balance (unhide)
-        if patternMatcher.isShowBalanceIntent(normalized) {
-            return .showBalance
-        }
-
-        // 7. Refresh/sync
-        if patternMatcher.isRefreshIntent(normalized) {
-            return .refreshWallet
-        }
-
-        // 8. Balance inquiry
-        if patternMatcher.isBalanceIntent(normalized) {
-            return .balance
-        }
-
-        // 9a. Export history
-        if patternMatcher.isExportIntent(normalized) {
-            return .exportHistory
-        }
-
-        // 9b. Transaction history
-        if patternMatcher.isHistoryIntent(normalized) {
+        // For history, include count
+        if case .history = best.intent {
             let count = entityExtractor.extractCount(from: normalized)
             return .history(count: count)
         }
 
-        // 10a. Bump fee / RBF
-        if patternMatcher.isBumpFeeIntent(normalized) {
+        // For bump fee, include txid
+        if case .bumpFee = best.intent {
             let txid = entityExtractor.extractTxId(from: trimmed)
             return .bumpFee(txid: txid)
         }
 
-        // 10b. Fee estimate
-        if patternMatcher.isFeeIntent(normalized) {
-            return .feeEstimate
+        // For price, include currency
+        if case .price = best.intent {
+            let currency = extractCurrencyCode(from: normalized)
+            return .price(currency: currency)
         }
 
-        // 11a. Wallet health
-        if patternMatcher.isWalletHealthIntent(normalized) {
-            return .walletHealth
+        return best.intent
+    }
+
+    // MARK: - Smart Classification API (with memory)
+
+    /// Classifies user input using all 7 signal sources plus conversation memory.
+    @MainActor
+    func classify(_ input: String, memory: ConversationMemory, references: [ResolvedEntity] = []) -> ClassificationResult {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return ClassificationResult(intent: .unknown(rawText: input), confidence: 0, needsClarification: true, alternatives: [])
         }
 
-        // 11b. UTXO list
-        if patternMatcher.isUTXOIntent(normalized) {
-            return .utxoList
+        let normalized = trimmed.lowercased()
+        let entities = entityExtractor.extract(from: trimmed)
+        var allScores: [IntentScore] = []
+
+        // SIGNAL 1: Keyword matching
+        allScores += patternMatcher.scoredMatch(normalized)
+
+        // SIGNAL 2: Entity presence
+        allScores += entityPresenceScores(entities, input: trimmed)
+
+        // SIGNAL 3: Conversation context
+        allScores += contextScores(normalized, entities: entities, memory: memory)
+
+        // SIGNAL 4: Reference resolution
+        allScores += referenceScores(references, memory: memory)
+
+        // SIGNAL 5: Semantic verb mapping
+        allScores += semanticScores(normalized)
+
+        // SIGNAL 6: Social/meta detection
+        allScores += socialScores(normalized)
+
+        // SIGNAL 7: Negation detection
+        allScores = applyNegationPenalty(normalized, scores: allScores)
+
+        // Fiat conversion detection
+        if let fiat = currencyParser.parseFiatAmount(from: trimmed) {
+            allScores.append(IntentScore(
+                intent: .convertAmount(amount: fiat.amount, fromCurrency: fiat.currencyCode),
+                confidence: SignalWeight.entityPresence,
+                source: "entity_fiat"
+            ))
         }
 
-        // 11c. Network status
-        if patternMatcher.isNetworkStatusIntent(normalized) {
-            return .networkStatus
-        }
-
-        // 12. Transaction detail — bare txid
+        // Bare txid
         if let txid = entityExtractor.extractTxId(from: trimmed) {
-            return .transactionDetail(txid: txid)
+            allScores.append(IntentScore(
+                intent: .transactionDetail(txid: txid),
+                confidence: SignalWeight.entityPresence,
+                source: "entity_txid"
+            ))
         }
 
-        // 13a. About
-        if patternMatcher.isAboutIntent(normalized) {
-            return .about
-        }
+        // Merge and rank
+        let merged = mergeScores(allScores)
 
-        // 13b. Settings
-        if patternMatcher.isSettingsIntent(normalized) {
-            return .settings
-        }
-
-        // 14. Help
-        if patternMatcher.isHelpIntent(normalized) {
-            return .help
-        }
-
-        // 15. Fallback — bare address or amount implies send
-        let fallbackEntities = entityExtractor.extract(from: trimmed)
-        if let address = fallbackEntities.address, addressValidator.isValid(address) {
-            return .send(
-                amount: fallbackEntities.amount,
-                unit: fallbackEntities.unit,
-                address: address,
-                feeLevel: fallbackEntities.feeLevel
+        guard let best = merged.first else {
+            return ClassificationResult(
+                intent: .unknown(rawText: input),
+                confidence: 0,
+                needsClarification: true,
+                alternatives: []
             )
         }
 
-        // 16. Smart fallback — never say "unknown command"
-        // Instead, try to be helpful based on what we can detect
-        return .unknown(rawText: input)
+        // Resolve the final intent with entity details
+        let resolvedIntent = resolveIntentDetails(best.intent, input: trimmed, normalized: normalized)
+
+        return ClassificationResult(
+            intent: resolvedIntent,
+            confidence: best.confidence,
+            needsClarification: best.confidence < 0.5,
+            alternatives: Array(merged.prefix(3))
+        )
+    }
+
+    // MARK: - Signal 2: Entity Presence
+
+    private func entityPresenceScores(_ entities: ParsedEntity, input: String) -> [IntentScore] {
+        var scores: [IntentScore] = []
+
+        // Address found → likely send
+        if let addr = entities.address, addressValidator.isValid(addr) {
+            scores.append(IntentScore(
+                intent: .send(amount: entities.amount, unit: entities.unit, address: addr, feeLevel: entities.feeLevel),
+                confidence: SignalWeight.entityPresence,
+                source: "entity_address"
+            ))
+        }
+
+        return scores
+    }
+
+    // MARK: - Signal 3: Conversation Context
+
+    @MainActor
+    private func contextScores(_ text: String, entities: ParsedEntity, memory: ConversationMemory) -> [IntentScore] {
+        var scores: [IntentScore] = []
+
+        // In awaitingAddress + message has address → send flow (very high confidence)
+        if case .awaitingAddress = memory.currentFlowState, entities.address != nil {
+            scores.append(IntentScore(
+                intent: .send(amount: nil, unit: nil, address: entities.address, feeLevel: nil),
+                confidence: SignalWeight.context,
+                source: "context_flow_address"
+            ))
+        }
+
+        // In awaitingAmount + message has number → it's the amount
+        if case .awaitingAmount = memory.currentFlowState, entities.amount != nil {
+            scores.append(IntentScore(
+                intent: .send(amount: entities.amount, unit: entities.unit, address: nil, feeLevel: nil),
+                confidence: SignalWeight.context,
+                source: "context_flow_amount"
+            ))
+        }
+
+        // In awaitingAmount + bare number → it's the amount
+        if case .awaitingAmount = memory.currentFlowState {
+            let trimmed = text.trimmingCharacters(in: .whitespaces)
+            if let _ = Decimal(string: trimmed) {
+                scores.append(IntentScore(
+                    intent: .send(amount: nil, unit: nil, address: nil, feeLevel: nil),
+                    confidence: SignalWeight.context,
+                    source: "context_bare_number"
+                ))
+            }
+        }
+
+        // Just saw fees + follow-up question → fee follow-up
+        if let lastIntent = memory.lastUserIntent, lastIntent == .feeEstimate {
+            let followUps = ["enough", "fast enough", "good enough", "too slow", "too high",
+                             "reasonable", "will it", "is that", "ok?"]
+            if followUps.contains(where: { text.contains($0) }) {
+                scores.append(IntentScore(
+                    intent: .feeEstimate,
+                    confidence: 0.8,
+                    source: "context_followup"
+                ))
+            }
+        }
+
+        // Just completed send + asking about balance → definitely balance
+        if memory.lastSentTx != nil && memory.turnsSinceLastSend() < 4 {
+            let balanceIndicators = ["balance", "left", "remaining", "have now", "how much"]
+            if balanceIndicators.contains(where: { text.contains($0) }) {
+                scores.append(IntentScore(
+                    intent: .balance,
+                    confidence: 0.9,
+                    source: "context_post_send"
+                ))
+            }
+        }
+
+        // After showing history + "the second one" → transaction detail
+        if memory.lastShownTransactions != nil {
+            let detailIndicators = ["details", "more about", "tell me about", "show me"]
+            if detailIndicators.contains(where: { text.contains($0) }) {
+                scores.append(IntentScore(
+                    intent: .history(count: nil),
+                    confidence: 0.7,
+                    source: "context_history_followup"
+                ))
+            }
+        }
+
+        return scores
+    }
+
+    // MARK: - Signal 4: Reference Scores
+
+    @MainActor
+    private func referenceScores(_ refs: [ResolvedEntity], memory: ConversationMemory) -> [IntentScore] {
+        var scores: [IntentScore] = []
+
+        for ref in refs {
+            switch ref {
+            case .address:
+                scores.append(IntentScore(
+                    intent: .send(amount: nil, unit: nil, address: nil, feeLevel: nil),
+                    confidence: SignalWeight.reference,
+                    source: "ref_address"
+                ))
+            case .amount:
+                scores.append(IntentScore(
+                    intent: .send(amount: nil, unit: nil, address: nil, feeLevel: nil),
+                    confidence: SignalWeight.reference,
+                    source: "ref_amount"
+                ))
+            case .intent(let intent):
+                scores.append(IntentScore(
+                    intent: intent,
+                    confidence: SignalWeight.reference,
+                    source: "ref_repeat"
+                ))
+            case .transaction(let tx):
+                scores.append(IntentScore(
+                    intent: .transactionDetail(txid: tx.txid),
+                    confidence: SignalWeight.reference,
+                    source: "ref_ordinal"
+                ))
+            }
+        }
+
+        return scores
+    }
+
+    // MARK: - Signal 5: Semantic Scores
+
+    private func semanticScores(_ text: String) -> [IntentScore] {
+        var scores: [IntentScore] = []
+
+        // "show me my money" → balance
+        let showMoneyPatterns = ["show me my money", "my money", "my coins", "my btc",
+                                  "show me my", "how much money", "my wallet"]
+        if showMoneyPatterns.contains(where: { text.contains($0) }) {
+            scores.append(IntentScore(intent: .balance, confidence: SignalWeight.semantic, source: "semantic"))
+        }
+
+        // "what's the going rate" → price
+        let ratePatterns = ["going rate", "exchange rate", "market rate", "what is bitcoin worth",
+                            "how much is bitcoin worth", "how much is one bitcoin"]
+        if ratePatterns.contains(where: { text.contains($0) }) {
+            scores.append(IntentScore(intent: .price(currency: nil), confidence: SignalWeight.semantic, source: "semantic"))
+        }
+
+        // "is the network busy" → fee or network
+        if text.contains("network busy") || text.contains("congested") || text.contains("congestion") {
+            scores.append(IntentScore(intent: .feeEstimate, confidence: SignalWeight.semantic, source: "semantic"))
+        }
+
+        // "how much was" → could be history or balance context
+        if text.contains("how much was") || text.contains("how much did i") {
+            scores.append(IntentScore(intent: .history(count: nil), confidence: SignalWeight.semantic, source: "semantic"))
+        }
+
+        return scores
+    }
+
+    // MARK: - Signal 6: Social Scores
+
+    private func socialScores(_ text: String) -> [IntentScore] {
+        var scores: [IntentScore] = []
+
+        if patternMatcher.isSocialPositive(text) {
+            scores.append(IntentScore(intent: .greeting, confidence: SignalWeight.social, source: "social_positive"))
+        }
+
+        if patternMatcher.isSocialNegative(text) {
+            scores.append(IntentScore(intent: .help, confidence: SignalWeight.semantic, source: "social_negative"))
+        }
+
+        // Emoji-only or very short
+        if text.count <= 3 {
+            if text == "lol" || text == "haha" || text == "😂" || text == "😊" || text == "🙏" {
+                scores.append(IntentScore(intent: .greeting, confidence: 0.4, source: "social_emoji"))
+            }
+        }
+
+        return scores
+    }
+
+    // MARK: - Signal 7: Negation Penalty
+
+    private func applyNegationPenalty(_ text: String, scores: [IntentScore]) -> [IntentScore] {
+        guard patternMatcher.containsNegation(text) else { return scores }
+
+        return scores.map { score in
+            switch score.intent {
+            case .send, .confirmAction:
+                return IntentScore(
+                    intent: score.intent,
+                    confidence: score.confidence * SignalWeight.negation,
+                    source: score.source + "_negated"
+                )
+            default:
+                return score
+            }
+        }
+    }
+
+    // MARK: - Score Merging
+
+    /// Merges scores for each unique intent type. Uses weighted average of top 2 signals.
+    private func mergeScores(_ scores: [IntentScore]) -> [IntentScore] {
+        guard !scores.isEmpty else { return [] }
+
+        let grouped = Dictionary(grouping: scores) { $0.intent.intentKey }
+        let merged: [IntentScore] = grouped.compactMap { (_, group) in
+            let sorted = group.sorted(by: { $0.confidence > $1.confidence })
+            if sorted.count >= 2 {
+                // 70% from top signal, 30% from second
+                let combined = sorted[0].confidence * 0.7 + sorted[1].confidence * 0.3
+                return IntentScore(intent: sorted[0].intent, confidence: min(combined, 1.0), source: "merged")
+            }
+            return sorted.first
+        }
+
+        return merged.sorted(by: { $0.confidence > $1.confidence })
+    }
+
+    // MARK: - Intent Detail Resolution
+
+    /// Enriches a generic intent match with extracted entity details.
+    private func resolveIntentDetails(_ intent: WalletIntent, input: String, normalized: String) -> WalletIntent {
+        switch intent {
+        case .send:
+            return buildSendIntent(from: input)
+        case .history:
+            let count = entityExtractor.extractCount(from: normalized)
+            return .history(count: count)
+        case .bumpFee:
+            let txid = entityExtractor.extractTxId(from: input)
+            return .bumpFee(txid: txid)
+        case .price:
+            let currency = extractCurrencyCode(from: normalized)
+            return .price(currency: currency)
+        default:
+            return intent
+        }
     }
 
     // MARK: - Private Helpers
 
-    /// Builds a `.send` intent by extracting all relevant entities from the input.
     private func buildSendIntent(from originalInput: String) -> WalletIntent {
         let entities = entityExtractor.extract(from: originalInput)
-
         let validatedAddress: String?
         if let address = entities.address {
             validatedAddress = addressValidator.isValid(address) ? address : nil
         } else {
             validatedAddress = nil
         }
-
         return .send(
             amount: entities.amount,
             unit: entities.unit,
@@ -228,7 +463,6 @@ final class IntentParser {
         )
     }
 
-    /// Extracts a currency code from text (e.g., "price in EUR" -> "EUR").
     private func extractCurrencyCode(from text: String) -> String? {
         let codePattern = try? NSRegularExpression(
             pattern: #"\bin\s+([A-Z]{3})\b"#,
@@ -236,13 +470,10 @@ final class IntentParser {
         )
         let nsText = text as NSString
         let range = NSRange(location: 0, length: nsText.length)
-
         if let match = codePattern?.firstMatch(in: text, options: [], range: range),
            match.range(at: 1).location != NSNotFound {
             let code = nsText.substring(with: match.range(at: 1)).uppercased()
-            if CurrencyParser.supportedCurrencyCodes.contains(code) {
-                return code
-            }
+            if CurrencyParser.supportedCurrencyCodes.contains(code) { return code }
         }
         return nil
     }

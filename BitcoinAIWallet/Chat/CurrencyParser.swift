@@ -71,7 +71,7 @@ final class CurrencyParser {
     /// Maps common currency names (including multilingual) to ISO codes.
     private static let nameToCurrency: [String: String] = [
         // English
-        "dollar": "USD", "dollars": "USD", "usd": "USD",
+        "dollar": "USD", "dollars": "USD", "usd": "USD", "bucks": "USD", "buck": "USD",
         "euro": "EUR", "euros": "EUR", "eur": "EUR",
         "pound": "GBP", "pounds": "GBP", "gbp": "GBP", "sterling": "GBP",
         "yen": "JPY", "jpy": "JPY",

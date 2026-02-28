@@ -1,10 +1,10 @@
 // MARK: - ConversationFlow.swift
 // Bitcoin AI Wallet
 //
-// Manages the multi-step conversation state machine for the chat engine.
-// Tracks where the user is in a multi-turn flow (e.g., building a send
-// transaction step by step) and resolves missing information as the user
-// provides it across multiple messages.
+// Smart conversation state machine with:
+// - Pausable flows (user can ask "what's my balance?" mid-send and resume)
+// - Mid-flow modifications ("actually make it 0.05")
+// - Graceful interruption handling
 //
 // Platform: iOS 17.0+
 // Framework: Foundation, Combine (via ObservableObject)
@@ -14,115 +14,101 @@ import Foundation
 // MARK: - ConversationState
 
 /// The current state of a multi-step conversation flow.
-///
-/// The chat engine uses this to know which piece of information to request next
-/// and how to interpret the user's follow-up messages.
 enum ConversationState: Equatable {
-
-    /// No active multi-step flow. The user can issue any command.
     case idle
-
-    /// Waiting for the user to provide a send amount.
-    /// The destination address has already been captured.
     case awaitingAmount(address: String)
-
-    /// Waiting for the user to provide a destination address.
-    /// The send amount has already been captured.
     case awaitingAddress(amount: Decimal)
-
-    /// Waiting for the user to select a fee level.
-    /// Both amount and address have been captured.
     case awaitingFeeLevel(amount: Decimal, address: String)
-
-    /// Waiting for the user to confirm the transaction.
-    /// All transaction parameters are known.
     case awaitingConfirmation(amount: Decimal, address: String, fee: Decimal)
-
-    /// A transaction is being signed and broadcast.
     case processing
-
-    /// The flow completed successfully.
     case completed
-
-    /// The flow ended with an error.
     case error(String)
-
-    // MARK: - Equatable
 
     static func == (lhs: ConversationState, rhs: ConversationState) -> Bool {
         switch (lhs, rhs) {
-        case (.idle, .idle):
-            return true
-        case (.awaitingAmount(let a), .awaitingAmount(let b)):
-            return a == b
-        case (.awaitingAddress(let a), .awaitingAddress(let b)):
-            return a == b
+        case (.idle, .idle): return true
+        case (.awaitingAmount(let a), .awaitingAmount(let b)): return a == b
+        case (.awaitingAddress(let a), .awaitingAddress(let b)): return a == b
         case (.awaitingFeeLevel(let aAmt, let aAddr), .awaitingFeeLevel(let bAmt, let bAddr)):
             return aAmt == bAmt && aAddr == bAddr
         case (.awaitingConfirmation(let aAmt, let aAddr, let aFee),
               .awaitingConfirmation(let bAmt, let bAddr, let bFee)):
             return aAmt == bAmt && aAddr == bAddr && aFee == bFee
-        case (.processing, .processing):
-            return true
-        case (.completed, .completed):
-            return true
-        case (.error(let a), .error(let b)):
-            return a == b
-        default:
-            return false
+        case (.processing, .processing): return true
+        case (.completed, .completed): return true
+        case (.error(let a), .error(let b)): return a == b
+        default: return false
         }
     }
 }
 
+// MARK: - FlowAction
+
+/// The result of processing a message through the flow engine.
+enum FlowAction {
+    /// Advance the flow to a new state and process the intent normally.
+    case advanceFlow(ConversationState)
+
+    /// Pause the current flow, handle this intent, and provide a resume hint.
+    case pauseAndHandle(WalletIntent, resumeHint: String)
+
+    /// Modify a field in the active flow (amount, address, fee).
+    case modifyFlow(ConversationState)
+
+    /// Handle normally (no flow interaction).
+    case handleNormally(WalletIntent)
+}
+
 // MARK: - ConversationFlow
 
-/// Manages the multi-step conversation state machine.
-///
-/// The flow object is owned by the ``ChatViewModel`` and updated each time
-/// the user sends a message. It determines whether a new intent starts a
-/// fresh flow or contributes missing information to an in-progress flow.
-///
-/// ```swift
-/// let flow = ConversationFlow()
-/// let intent = WalletIntent.send(amount: nil, unit: nil, address: "bc1q...", feeLevel: nil)
-/// let next = flow.processIntent(intent)
-/// // next == .awaitingAmount(address: "bc1q...")
-/// ```
 final class ConversationFlow: ObservableObject {
 
     // MARK: - Published Properties
 
-    /// The current conversation state, observed by the UI for display updates.
     @Published var state: ConversationState = .idle
-
-    /// Details of the transaction being built, populated once all parameters are known.
     @Published var pendingTransaction: PendingTransactionInfo?
+
+    /// A paused flow state that can be resumed after handling an interruption.
+    @Published var pausedFlow: ConversationState?
 
     // MARK: - Constants
 
-    /// Number of satoshis in one BTC.
     private static let satoshisPerBTC: Decimal = 100_000_000
-
-    /// Typical transaction virtual size in vBytes, used for fee estimation.
     private static let typicalVSize: Int = 140
-
-    /// Default medium fee rate (sat/vB) when estimates are unavailable.
     private static let defaultFeeRate: Decimal = 15
 
-    /// Live fee estimates from the network, set by ChatViewModel.
-    /// When available, these override the hardcoded defaults.
+    /// Live fee estimates from the network.
     var liveFeeEstimates: (slow: Decimal, medium: Decimal, fast: Decimal)?
 
-    // MARK: - Public API
+    // MARK: - Smart Flow API
+
+    /// Processes a classified intent through the smart flow engine.
+    /// Returns a FlowAction indicating how the ChatViewModel should handle it.
+    @MainActor
+    func processSmartIntent(_ intent: WalletIntent, memory: ConversationMemory) -> FlowAction {
+        // If in an active send flow and user asks something unrelated → PAUSE
+        if isInSendFlow(state) && isUnrelatedToSend(intent) {
+            let hint = buildResumeHint(state)
+            pausedFlow = state
+            state = .idle
+            return .pauseAndHandle(intent, resumeHint: hint)
+        }
+
+        // If there's a paused flow and user provides expected data → RESUME
+        if let paused = pausedFlow, isResumingData(intent, for: paused) {
+            state = paused
+            pausedFlow = nil
+            // Fall through to normal processing with the resumed state
+        }
+
+        // Normal processing
+        let newState = processIntent(intent)
+        return .advanceFlow(newState)
+    }
+
+    // MARK: - Legacy API
 
     /// Process a parsed intent and advance the conversation state machine.
-    ///
-    /// The method inspects both the current state and the incoming intent to
-    /// decide the next state. For non-send intents, the state passes through
-    /// unchanged (the caller handles them statelessly).
-    ///
-    /// - Parameter intent: The parsed ``WalletIntent`` from user input.
-    /// - Returns: The new ``ConversationState`` after processing.
     @discardableResult
     func processIntent(_ intent: WalletIntent) -> ConversationState {
         let newState: ConversationState
@@ -139,11 +125,9 @@ final class ConversationFlow: ObservableObject {
                 let btcAmount = normalizeAmount(amount, unit: unit)
                 newState = resolveAmount(btcAmount, address: address)
             } else {
-                // User said something but did not provide an amount — stay in same state
                 newState = state
             }
 
-        // MARK: Resolve missing amount from bare number input
         case (.awaitingAmount(let address), .unknown(let rawText)):
             if let parsedAmount = Decimal(string: rawText.trimmingCharacters(in: .whitespacesAndNewlines)) {
                 newState = resolveAmount(parsedAmount, address: address)
@@ -159,7 +143,6 @@ final class ConversationFlow: ObservableObject {
                 newState = state
             }
 
-        // MARK: Resolve missing address from bare address input
         case (.awaitingAddress(let amount), .unknown(let rawText)):
             let trimmed = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
             let validator = AddressValidator()
@@ -169,20 +152,13 @@ final class ConversationFlow: ObservableObject {
                 newState = state
             }
 
-        // MARK: Resolve fee level selection
+        // MARK: Resolve fee level
         case (.awaitingFeeLevel(let amount, let address), .send(_, _, _, let feeLevel)):
-            if let level = feeLevel {
-                let fee = estimateFee(feeLevel: level)
-                newState = .awaitingConfirmation(amount: amount, address: address, fee: fee)
-                buildPendingTransaction(amount: amount, address: address, fee: fee, feeLevel: level)
-            } else {
-                // Default to medium if user doesn't specify
-                let fee = estimateFee(feeLevel: .medium)
-                newState = .awaitingConfirmation(amount: amount, address: address, fee: fee)
-                buildPendingTransaction(amount: amount, address: address, fee: fee, feeLevel: .medium)
-            }
+            let level = feeLevel ?? .medium
+            let fee = estimateFee(feeLevel: level)
+            newState = .awaitingConfirmation(amount: amount, address: address, fee: fee)
+            buildPendingTransaction(amount: amount, address: address, fee: fee, feeLevel: level)
 
-        // MARK: Resolve fee level from bare text
         case (.awaitingFeeLevel(let amount, let address), .unknown(let rawText)):
             let level = parseFeeLevel(from: rawText)
             let fee = estimateFee(feeLevel: level)
@@ -207,7 +183,7 @@ final class ConversationFlow: ObservableObject {
             where state != .idle && state != .processing:
             newState = handleNewSend(amount: amount, unit: unit, address: address, feeLevel: feeLevel)
 
-        // MARK: Pass-through for non-send intents
+        // MARK: Pass-through
         default:
             newState = state
         }
@@ -216,62 +192,99 @@ final class ConversationFlow: ObservableObject {
         return newState
     }
 
-    /// Resets the flow to the idle state, clearing any pending transaction.
+    /// Resets the flow to idle.
     func reset() {
         state = .idle
         pendingTransaction = nil
+        pausedFlow = nil
     }
 
-    /// Marks the flow as completed after a successful broadcast.
     func markCompleted() {
         state = .completed
         pendingTransaction = nil
     }
 
-    /// Marks the flow as failed with an error message.
-    ///
-    /// - Parameter message: A human-readable error description.
     func markError(_ message: String) {
         state = .error(message)
         pendingTransaction = nil
     }
 
-    // MARK: - Amount Normalization
-
-    /// Converts an amount from its declared unit to BTC.
-    ///
-    /// - Parameters:
-    ///   - amount: The raw numeric amount.
-    ///   - unit: The declared unit, or `nil` (treated as BTC).
-    /// - Returns: The amount in BTC.
     func normalizeAmount(_ amount: Decimal, unit: BitcoinUnit?) -> Decimal {
         guard let unit = unit else { return amount }
         switch unit {
-        case .btc:
-            return amount
-        case .sats, .satoshis:
-            return amount / Self.satoshisPerBTC
+        case .btc: return amount
+        case .sats, .satoshis: return amount / Self.satoshisPerBTC
+        }
+    }
+
+    // MARK: - Pause / Resume Helpers
+
+    /// Whether the current state is part of an active send flow.
+    private func isInSendFlow(_ flowState: ConversationState) -> Bool {
+        switch flowState {
+        case .awaitingAddress, .awaitingAmount, .awaitingFeeLevel, .awaitingConfirmation:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Whether this intent is unrelated to a send flow (can be handled without breaking it).
+    private func isUnrelatedToSend(_ intent: WalletIntent) -> Bool {
+        switch intent {
+        case .balance, .feeEstimate, .price, .history, .help, .about,
+             .walletHealth, .networkStatus, .utxoList, .receive,
+             .newAddress, .hideBalance, .showBalance, .refreshWallet,
+             .exportHistory, .greeting:
+            return true
+        case .convertAmount:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Whether this intent provides data expected by the paused flow.
+    private func isResumingData(_ intent: WalletIntent, for paused: ConversationState) -> Bool {
+        switch (paused, intent) {
+        case (.awaitingAddress, .send(_, _, let addr, _)) where addr != nil:
+            return true
+        case (.awaitingAmount, .send(let amt, _, _, _)) where amt != nil:
+            return true
+        case (.awaitingConfirmation, .confirmAction):
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Builds a human-readable hint about the paused flow.
+    func buildResumeHint(_ flowState: ConversationState) -> String {
+        switch flowState {
+        case .awaitingAmount(let addr):
+            let truncated = addr.count > 16 ? "\(addr.prefix(8))...\(addr.suffix(6))" : addr
+            return "\n\n{{dim:You were sending to \(truncated). Just tell me the amount when you're ready.}}"
+        case .awaitingAddress(let amt):
+            return "\n\n{{dim:You were about to send \(formatBTC(amt)) BTC. Give me the address when ready.}}"
+        case .awaitingConfirmation(let amt, let addr, _):
+            let truncated = addr.count > 16 ? "\(addr.prefix(8))...\(addr.suffix(6))" : addr
+            return "\n\n{{dim:You have a pending send of \(formatBTC(amt)) BTC to \(truncated). Say **\"confirm\"** or **\"cancel\"**.}}"
+        case .awaitingFeeLevel(let amt, let addr):
+            let truncated = addr.count > 16 ? "\(addr.prefix(8))...\(addr.suffix(6))" : addr
+            return "\n\n{{dim:Sending \(formatBTC(amt)) BTC to \(truncated). Pick a fee: **slow**, **medium**, or **fast**.}}"
+        default:
+            return ""
         }
     }
 
     // MARK: - Private Helpers
 
-    /// Handles the start of a new send flow, determining which piece of info is missing.
     private func handleNewSend(
-        amount: Decimal?,
-        unit: BitcoinUnit?,
-        address: String?,
-        feeLevel: FeeLevel?
+        amount: Decimal?, unit: BitcoinUnit?,
+        address: String?, feeLevel: FeeLevel?
     ) -> ConversationState {
+        let btcAmount: Decimal? = amount.map { normalizeAmount($0, unit: unit) }
 
-        let btcAmount: Decimal?
-        if let raw = amount {
-            btcAmount = normalizeAmount(raw, unit: unit)
-        } else {
-            btcAmount = nil
-        }
-
-        // Validate address if provided
         let validatedAddress: String?
         if let addr = address {
             let validator = AddressValidator()
@@ -285,44 +298,26 @@ final class ConversationFlow: ObservableObject {
 
         switch (btcAmount, validatedAddress) {
         case (.some(let amt), .some(let addr)):
-            // Both present — move to fee selection or confirmation
-            if let level = feeLevel {
-                let fee = estimateFee(feeLevel: level)
-                buildPendingTransaction(amount: amt, address: addr, fee: fee, feeLevel: level)
-                return .awaitingConfirmation(amount: amt, address: addr, fee: fee)
-            } else {
-                // Default to medium fee and go straight to confirmation
-                let fee = estimateFee(feeLevel: .medium)
-                buildPendingTransaction(amount: amt, address: addr, fee: fee, feeLevel: .medium)
-                return .awaitingConfirmation(amount: amt, address: addr, fee: fee)
-            }
-
+            let level = feeLevel ?? .medium
+            let fee = estimateFee(feeLevel: level)
+            buildPendingTransaction(amount: amt, address: addr, fee: fee, feeLevel: level)
+            return .awaitingConfirmation(amount: amt, address: addr, fee: fee)
         case (.some(let amt), .none):
-            // Have amount, need address
             return .awaitingAddress(amount: amt)
-
         case (.none, .some(let addr)):
-            // Have address, need amount
             return .awaitingAmount(address: addr)
-
         case (.none, .none):
-            // Need both — ask for address first (conventional order)
             return .awaitingAddress(amount: 0)
         }
     }
 
-    /// Resolves a newly provided amount and advances the state.
     private func resolveAmount(_ amount: Decimal, address: String) -> ConversationState {
-        guard amount > 0 else {
-            return .error(L10n.Error.invalidAmount)
-        }
-        // Default to medium fee and go to confirmation
+        guard amount > 0 else { return .error(L10n.Error.invalidAmount) }
         let fee = estimateFee(feeLevel: .medium)
         buildPendingTransaction(amount: amount, address: address, fee: fee, feeLevel: .medium)
         return .awaitingConfirmation(amount: amount, address: address, fee: fee)
     }
 
-    /// Resolves a newly provided address and advances the state.
     private func resolveAddress(_ address: String, amount: Decimal) -> ConversationState {
         let validator = AddressValidator()
         guard !validator.isTestnet(address) else {
@@ -331,20 +326,15 @@ final class ConversationFlow: ObservableObject {
         guard validator.isValid(address) else {
             return .error(L10n.Chat.invalidAddress)
         }
-
         if amount > 0 {
-            // Both amount and address are now known
             let fee = estimateFee(feeLevel: .medium)
             buildPendingTransaction(amount: amount, address: address, fee: fee, feeLevel: .medium)
             return .awaitingConfirmation(amount: amount, address: address, fee: fee)
         } else {
-            // Amount was a placeholder zero — need the real amount
             return .awaitingAmount(address: address)
         }
     }
 
-    /// Estimates the fee in BTC for a typical transaction at the given fee level.
-    /// Uses live network fee estimates when available, falls back to defaults.
     private func estimateFee(feeLevel: FeeLevel) -> Decimal {
         let ratePerVB: Decimal
         if let live = liveFeeEstimates {
@@ -362,12 +352,9 @@ final class ConversationFlow: ObservableObject {
             case .custom: ratePerVB = Self.defaultFeeRate
             }
         }
-
-        let feeSats = ratePerVB * Decimal(Self.typicalVSize)
-        return feeSats / Self.satoshisPerBTC
+        return (ratePerVB * Decimal(Self.typicalVSize)) / Self.satoshisPerBTC
     }
 
-    /// Returns the estimated confirmation time in minutes for a fee level.
     private func estimatedMinutes(for level: FeeLevel) -> Int {
         switch level {
         case .fast: return 10
@@ -376,8 +363,14 @@ final class ConversationFlow: ObservableObject {
         }
     }
 
-    /// Returns the fee rate in sat/vB for a given level.
     private func feeRate(for level: FeeLevel) -> Decimal {
+        if let live = liveFeeEstimates {
+            switch level {
+            case .slow: return live.slow
+            case .medium, .custom: return live.medium
+            case .fast: return live.fast
+            }
+        }
         switch level {
         case .slow: return 5
         case .medium, .custom: return Self.defaultFeeRate
@@ -385,36 +378,29 @@ final class ConversationFlow: ObservableObject {
         }
     }
 
-    /// Populates the ``pendingTransaction`` with all known parameters.
-    private func buildPendingTransaction(
-        amount: Decimal,
-        address: String,
-        fee: Decimal,
-        feeLevel: FeeLevel
-    ) {
+    private func buildPendingTransaction(amount: Decimal, address: String, fee: Decimal, feeLevel: FeeLevel) {
         pendingTransaction = PendingTransactionInfo(
-            toAddress: address,
-            amount: amount,
-            fee: fee,
+            toAddress: address, amount: amount, fee: fee,
             feeRate: feeRate(for: feeLevel),
             estimatedMinutes: estimatedMinutes(for: feeLevel)
         )
     }
 
-    /// Attempts to parse a fee level from free-form text.
     private func parseFeeLevel(from text: String) -> FeeLevel {
         let lowered = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-
-        let fastKeywords = ["fast", "priority", "urgent", "high", "rush", "asap", "quick"]
-        let slowKeywords = ["slow", "low", "economy", "cheap", "saver", "eco"]
-
-        for keyword in fastKeywords where lowered.contains(keyword) {
-            return .fast
-        }
-        for keyword in slowKeywords where lowered.contains(keyword) {
-            return .slow
-        }
-
+        let fastKeys = ["fast", "priority", "urgent", "high", "rush", "asap", "quick"]
+        let slowKeys = ["slow", "low", "economy", "cheap", "saver", "eco"]
+        for kw in fastKeys where lowered.contains(kw) { return .fast }
+        for kw in slowKeys where lowered.contains(kw) { return .slow }
         return .medium
+    }
+
+    private func formatBTC(_ amount: Decimal) -> String {
+        let handler = NSDecimalNumberHandler(
+            roundingMode: .plain, scale: 8,
+            raiseOnExactness: false, raiseOnOverflow: false,
+            raiseOnUnderflow: false, raiseOnDivideByZero: false
+        )
+        return NSDecimalNumber(decimal: amount).rounding(accordingToBehavior: handler).stringValue
     }
 }

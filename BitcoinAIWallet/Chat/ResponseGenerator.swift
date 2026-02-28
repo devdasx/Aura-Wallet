@@ -192,17 +192,31 @@ final class ResponseGenerator {
 
     private let tipsEngine = TipsEngine()
 
-    // MARK: - Public API
+    // MARK: - Public API (Legacy — no memory)
 
+    @MainActor
     func generateResponse(
         for intent: WalletIntent,
         context: ConversationContext
+    ) -> [ResponseType] {
+        generateResponse(for: intent, context: context, memory: nil, classification: nil)
+    }
+
+    // MARK: - Smart API (with memory + classification)
+
+    /// Memory-aware response generation with varied templates and context-aware output.
+    @MainActor
+    func generateResponse(
+        for intent: WalletIntent,
+        context: ConversationContext,
+        memory: ConversationMemory?,
+        classification: ClassificationResult?
     ) -> [ResponseType] {
         var responses: [ResponseType]
 
         switch intent {
         case .balance:
-            responses = generateBalanceResponse(context: context)
+            responses = generateBalanceResponse(context: context, memory: memory)
         case .send(let amount, let unit, let address, let feeLevel):
             responses = generateSendResponse(amount: amount, unit: unit, address: address, feeLevel: feeLevel, context: context)
         case .receive:
@@ -232,7 +246,7 @@ final class ResponseGenerator {
         case .about:
             responses = [.text(ResponseTemplates.aboutResponse())]
         case .greeting:
-            responses = [.text(ResponseTemplates.greeting(walletName: nil))]
+            responses = generateGreetingResponse(memory: memory)
         case .confirmAction:
             responses = generateConfirmResponse(context: context)
         case .cancelAction:
@@ -248,15 +262,50 @@ final class ResponseGenerator {
         case .transactionDetail(let txid):
             responses = generateTxDetailResponse(txid: txid, context: context)
         case .unknown:
-            responses = generateSmartFallback(context: context)
+            responses = generateSmartFallback(context: context, classification: classification)
         }
 
         return responses
     }
 
+    // MARK: - ShownData Extraction
+
+    /// Extracts what data was shown to the user from the generated responses.
+    /// Used by ChatViewModel to update ConversationMemory.
+    func extractShownData(from responses: [ResponseType], context: ConversationContext) -> ShownData? {
+        var data = ShownData()
+        var hasData = false
+
+        for response in responses {
+            switch response {
+            case .balanceCard(let btc, let fiat, _, _):
+                data.balance = btc
+                data.fiatBalance = fiat
+                hasData = true
+            case .historyCard(let txs):
+                data.transactions = txs
+                hasData = true
+            case .feeCard(let slow, let medium, let fast):
+                data.feeEstimates = (slow: slow.satPerVB, medium: medium.satPerVB, fast: fast.satPerVB)
+                hasData = true
+            case .receiveCard(let address, _):
+                data.receiveAddress = address
+                hasData = true
+            case .successCard(let txid, let amount, let toAddress):
+                data.sentTransaction = (txid: txid, amount: amount, address: toAddress, fee: 0)
+                hasData = true
+            default:
+                break
+            }
+        }
+
+        return hasData ? data : nil
+    }
+
     // MARK: - Balance Response
 
-    private func generateBalanceResponse(context: ConversationContext) -> [ResponseType] {
+    @MainActor
+    private func generateBalanceResponse(context: ConversationContext, memory: ConversationMemory? = nil) -> [ResponseType] {
         guard let btc = context.walletBalance else {
             return [.errorText(ResponseTemplates.networkError())]
         }
@@ -264,12 +313,36 @@ final class ResponseGenerator {
         let pending = context.pendingBalance ?? Decimal.zero
         let utxos = context.utxoCount ?? 0
 
-        let textResponse = ResponseTemplates.balanceResponse(
-            btcAmount: formatBTC(btc),
-            fiatAmount: formatFiat(fiat),
-            pendingAmount: pending > 0 ? formatBTC(pending) : nil,
-            utxoCount: utxos
-        )
+        let textResponse: String
+
+        // Context-aware: balance after a recent send
+        if let mem = memory, let sent = mem.lastSentTx, mem.turnsSinceLastSend() < 4 {
+            textResponse = ResponseTemplates.balanceAfterSend(
+                btcAmount: formatBTC(btc),
+                fiatAmount: formatFiat(fiat),
+                sentAmount: formatBTC(sent.amount),
+                pendingAmount: pending > 0 ? formatBTC(pending) : nil,
+                utxoCount: utxos
+            )
+        }
+        // Context-aware: balance unchanged since last check
+        else if let mem = memory, let lastBal = mem.lastShownBalance, lastBal == btc {
+            textResponse = ResponseTemplates.balanceUnchanged(
+                btcAmount: formatBTC(btc),
+                fiatAmount: formatFiat(fiat),
+                utxoCount: utxos
+            )
+        }
+        // Default balance response
+        else {
+            textResponse = ResponseTemplates.balanceResponse(
+                btcAmount: formatBTC(btc),
+                fiatAmount: formatFiat(fiat),
+                pendingAmount: pending > 0 ? formatBTC(pending) : nil,
+                utxoCount: utxos
+            )
+        }
+
         return [
             .text(textResponse),
             .balanceCard(btc: btc, fiat: fiat, pending: pending, utxoCount: utxos),
@@ -290,10 +363,10 @@ final class ResponseGenerator {
         }
 
         guard let resolvedAddress = address ?? extractAddressFromState(context) else {
-            return [.text(ResponseTemplates.askForAddress())]
+            return [.text(ResponseTemplates.askForAddressVaried())]
         }
         guard let rawAmount = amount else {
-            return [.text(ResponseTemplates.askForAmount())]
+            return [.text(ResponseTemplates.askForAmountVaried())]
         }
 
         let btcAmount = normalizeAmount(rawAmount, unit: unit)
@@ -483,7 +556,7 @@ final class ResponseGenerator {
     // MARK: - Cancel Response
 
     private func generateCancelResponse(context: ConversationContext) -> [ResponseType] {
-        return [.text(ResponseTemplates.operationCancelled())]
+        return [.text(ResponseTemplates.operationCancelledVaried())]
     }
 
     // MARK: - Transaction Detail Response
@@ -506,9 +579,43 @@ final class ResponseGenerator {
         return [.text(notFoundText)]
     }
 
+    // MARK: - Smart Greeting
+
+    @MainActor
+    private func generateGreetingResponse(memory: ConversationMemory?) -> [ResponseType] {
+        guard let mem = memory else {
+            return [.text(ResponseTemplates.greeting(walletName: nil))]
+        }
+
+        // Check if this is a "thanks" response based on last user message
+        if let lastMsg = mem.lastUserMessage?.lowercased() {
+            let thanksTriggers = ["thanks", "thank you", "thx", "ty", "appreciate", "cheers", "gracias", "شكرا"]
+            if thanksTriggers.contains(where: { lastMsg.contains($0) }) {
+                return [.text(ResponseTemplates.thankYouResponse())]
+            }
+        }
+
+        // First message in conversation → time-aware greeting
+        if mem.turnCount <= 1 {
+            return [.text(ResponseTemplates.timeAwareGreeting())]
+        }
+
+        // Returning greeting mid-conversation → social response
+        return [.text(ResponseTemplates.socialPositiveResponse())]
+    }
+
     // MARK: - Smart Fallback
 
-    private func generateSmartFallback(context: ConversationContext) -> [ResponseType] {
+    private func generateSmartFallback(context: ConversationContext, classification: ClassificationResult? = nil) -> [ResponseType] {
+        // Use classification-aware fallback if available
+        if let cls = classification {
+            let bestGuess: WalletIntent? = cls.alternatives.first?.intent
+            return [.text(ResponseTemplates.smartFallbackWithGuess(
+                bestGuess: bestGuess,
+                confidence: cls.confidence,
+                alternatives: cls.alternatives
+            ))]
+        }
         return [.text(ResponseTemplates.smartFallback())]
     }
 

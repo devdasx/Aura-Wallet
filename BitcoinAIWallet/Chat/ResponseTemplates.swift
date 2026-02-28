@@ -1,8 +1,11 @@
 // MARK: - ResponseTemplates.swift
 // Bitcoin AI Wallet
 //
-// Pre-defined response templates for the AI chat assistant.
-// All user-facing strings are routed through L10n for localization.
+// Dynamic response templates for the AI chat assistant.
+// Uses variation pools (3-5 per response) to avoid repetition,
+// time-aware greetings, context-aware balance responses,
+// and intelligent fallbacks.
+//
 // Templates embed formatting tokens ({{amount:}}, **bold**, etc.)
 // that MessageFormatter parses at display time.
 //
@@ -15,6 +18,13 @@ import Foundation
 
 struct ResponseTemplates {
 
+    // MARK: - Variation Helper
+
+    /// Picks a random item from an array. Falls back to the first element.
+    private static func pick(_ options: [String]) -> String {
+        options.randomElement() ?? options[0]
+    }
+
     // MARK: - Greeting
 
     static func greeting(walletName: String?) -> String {
@@ -22,6 +32,52 @@ struct ResponseTemplates {
             return L10n.Format.greetingWithName(name)
         }
         return L10n.Chat.greeting
+    }
+
+    /// Time-aware greeting with 3 variations per period.
+    static func timeAwareGreeting() -> String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        if hour < 12 {
+            return pick([
+                "Good morning! What can I help you with?",
+                "Morning! Ready to check your wallet?",
+                "Good morning. How's your wallet looking today?",
+            ])
+        } else if hour < 17 {
+            return pick([
+                "Good afternoon! What would you like to do?",
+                "Hey there! Need anything this afternoon?",
+                "Afternoon! What can I do for you?",
+            ])
+        } else {
+            return pick([
+                "Good evening! Need anything?",
+                "Evening! What can I help with?",
+                "Hey! What are you looking to do tonight?",
+            ])
+        }
+    }
+
+    // MARK: - Social Responses
+
+    /// Response to "thanks", "thank you", etc.
+    static func thankYouResponse() -> String {
+        pick([
+            "Happy to help!",
+            "Anytime! Let me know if you need anything else.",
+            "You're welcome!",
+            "No problem! I'm here whenever you need me.",
+            "Glad I could help!",
+        ])
+    }
+
+    /// Response to positive social interactions (lol, haha, etc.)
+    static func socialPositiveResponse() -> String {
+        pick([
+            "Anything else I can help with?",
+            "Need anything else?",
+            "I'm here if you need me!",
+        ])
     }
 
     // MARK: - Balance
@@ -37,6 +93,44 @@ struct ResponseTemplates {
         lines.append("• \(L10n.Wallet.utxoCount): **\(utxoCount)**")
         lines.append("")
         lines.append("{{dim:\(L10n.Wallet.lastUpdated): \(localizedString("chat.just_now"))}}")
+        return lines.joined(separator: "\n")
+    }
+
+    // MARK: - Context-Aware Balance
+
+    /// Balance response after a recent send — "After sending X, you have Y left."
+    static func balanceAfterSend(btcAmount: String, fiatAmount: String, sentAmount: String, pendingAmount: String?, utxoCount: Int) -> String {
+        var lines: [String] = []
+        let intro = pick([
+            "After sending **\(sentAmount) BTC**, here's where you stand:",
+            "Post-send balance update:",
+            "After that send, you have:",
+        ])
+        lines.append(intro)
+        lines.append("")
+        lines.append("{{amount:\(btcAmount) BTC}}  {{fiat:\(fiatAmount)}}")
+        lines.append("")
+        lines.append("• \(L10n.Wallet.availableBalance): **\(btcAmount) BTC**")
+        if let pending = pendingAmount {
+            lines.append("• \(L10n.Wallet.pendingBalance): **\(pending) BTC**")
+        }
+        lines.append("• \(L10n.Wallet.utxoCount): **\(utxoCount)**")
+        return lines.joined(separator: "\n")
+    }
+
+    /// Balance response when nothing changed since last check.
+    static func balanceUnchanged(btcAmount: String, fiatAmount: String, utxoCount: Int) -> String {
+        var lines: [String] = []
+        let intro = pick([
+            "Still sitting at **\(btcAmount) BTC** — no changes.",
+            "Same as before: **\(btcAmount) BTC**.",
+            "No change since your last check.",
+        ])
+        lines.append(intro)
+        lines.append("")
+        lines.append("{{amount:\(btcAmount) BTC}}  {{fiat:\(fiatAmount)}}")
+        lines.append("")
+        lines.append("• \(L10n.Wallet.utxoCount): **\(utxoCount)**")
         return lines.joined(separator: "\n")
     }
 
@@ -206,6 +300,52 @@ struct ResponseTemplates {
         localizedString("chat.smart_fallback")
     }
 
+    /// Intelligent fallback using classification alternatives.
+    /// Never says "unknown command" — instead offers helpful guesses.
+    static func smartFallbackWithGuess(bestGuess: WalletIntent?, confidence: Double, alternatives: [IntentScore]) -> String {
+        // High-ish confidence with a single best guess
+        if let guess = bestGuess, confidence >= 0.3 {
+            let name = guess.friendlyName
+            let suggestion = intentSuggestion(guess)
+            return pick([
+                "I'm not quite sure what you mean. Did you want to check your **\(name)**?\n\n{{dim:Try: \"\(suggestion)\"}}",
+                "Hmm, I think you might be asking about **\(name)**.\n\n{{dim:Try saying: \"\(suggestion)\"}}",
+                "I didn't quite catch that. Were you looking for **\(name)**?\n\n{{dim:You can say: \"\(suggestion)\"}}",
+            ])
+        }
+
+        // Multiple possible alternatives
+        if alternatives.count >= 2 {
+            let top2 = alternatives.prefix(2).map { "**\($0.intent.friendlyName)**" }
+            return "I'm not sure what you're looking for. Did you mean \(top2[0]) or \(top2[1])?\n\n{{dim:Say **\"help\"** to see everything I can do.}}"
+        }
+
+        // No clue at all — be helpful, not dismissive
+        return pick([
+            "I didn't quite get that. I can help with your **balance**, **sending**, **receiving**, **fees**, **price**, and more.\n\n{{dim:Say **\"help\"** for the full list.}}",
+            "Not sure I understood. Try asking about your **balance**, **transactions**, or **fees**.\n\n{{dim:Say **\"help\"** to see all commands.}}",
+            "Hmm, I'm not sure what you need. Here are some things I can do:\n\n• Check your **balance**\n• **Send** or **receive** Bitcoin\n• Show **fee estimates**\n• Check the **price**\n\n{{dim:Say **\"help\"** for more.}}",
+        ])
+    }
+
+    /// Returns a sample command for a given intent type.
+    private static func intentSuggestion(_ intent: WalletIntent) -> String {
+        switch intent {
+        case .balance: return "balance"
+        case .send: return "send 0.001 BTC to bc1q..."
+        case .receive: return "receive"
+        case .history: return "show my history"
+        case .feeEstimate: return "fees"
+        case .price: return "btc price"
+        case .convertAmount: return "$50 in BTC"
+        case .walletHealth: return "wallet health"
+        case .utxoList: return "show my UTXOs"
+        case .networkStatus: return "network status"
+        case .help: return "help"
+        default: return "help"
+        }
+    }
+
     // MARK: - Nothing to Confirm
 
     static func nothingToConfirm() -> String {
@@ -269,6 +409,24 @@ struct ResponseTemplates {
         localizedString("chat.ask_for_amount")
     }
 
+    /// Varied address prompt for the send flow.
+    static func askForAddressVaried() -> String {
+        pick([
+            localizedString("chat.ask_for_address"),
+            "Where should I send it? Paste or type the Bitcoin address.",
+            "Got it. What's the receiving address?",
+        ])
+    }
+
+    /// Varied amount prompt for the send flow.
+    static func askForAmountVaried() -> String {
+        pick([
+            localizedString("chat.ask_for_amount"),
+            "How much would you like to send? (BTC or sats)",
+            "What amount? You can say BTC or sats.",
+        ])
+    }
+
     static func askToConfirm() -> String { L10n.Chat.sendConfirmPrompt }
 
     static func askForFeeLevel() -> String {
@@ -298,6 +456,15 @@ struct ResponseTemplates {
 
     static func operationCancelled() -> String {
         "{{dim:\(localizedString("chat.operation_cancelled"))}}"
+    }
+
+    /// Varied cancellation response.
+    static func operationCancelledVaried() -> String {
+        pick([
+            "{{dim:\(localizedString("chat.operation_cancelled"))}}",
+            "{{dim:No worries, cancelled. What would you like to do instead?}}",
+            "{{dim:Cancelled. Let me know when you're ready.}}",
+        ])
     }
 
     // MARK: - Processing

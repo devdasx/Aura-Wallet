@@ -2,9 +2,13 @@
 // Bitcoin AI Wallet
 //
 // Main business logic for the AI chat interface.
-// Coordinates intent parsing, response generation, conversation flow,
-// and UI state. Handles all new intents including price, convert,
-// wallet health, and smart fallback.
+// V16 Smart Pipeline: seed check → reference resolution → multi-intent
+// split → scored classification → memory recording → smart flow →
+// memory-aware response → personality adaptation → memory update.
+//
+// Coordinates 8 interconnected systems:
+// IntentParser, ConversationMemory, ReferenceResolver, ConversationFlow,
+// ResponseGenerator, MultiIntentHandler, PersonalityEngine, EntityExtractor.
 //
 // Platform: iOS 17.0+
 // Framework: Foundation, SwiftUI
@@ -123,6 +127,10 @@ final class ChatViewModel: ObservableObject {
     private let intentParser: IntentParser
     let responseGenerator: ResponseGenerator
     private let conversationFlow: ConversationFlow
+    private let referenceResolver: ReferenceResolver
+    private let multiIntentHandler: MultiIntentHandler
+    private let personalityEngine: PersonalityEngine
+    let memory: ConversationMemory
 
     // MARK: - Conversation Persistence
 
@@ -165,6 +173,10 @@ final class ChatViewModel: ObservableObject {
         self.intentParser = IntentParser()
         self.responseGenerator = ResponseGenerator()
         self.conversationFlow = ConversationFlow()
+        self.referenceResolver = ReferenceResolver()
+        self.multiIntentHandler = MultiIntentHandler()
+        self.personalityEngine = PersonalityEngine()
+        self.memory = ConversationMemory()
         addGreeting()
     }
 
@@ -172,6 +184,10 @@ final class ChatViewModel: ObservableObject {
         self.intentParser = intentParser
         self.responseGenerator = responseGenerator
         self.conversationFlow = conversationFlow
+        self.referenceResolver = ReferenceResolver()
+        self.multiIntentHandler = MultiIntentHandler()
+        self.personalityEngine = PersonalityEngine()
+        self.memory = ConversationMemory()
         addGreeting()
     }
 
@@ -181,7 +197,7 @@ final class ChatViewModel: ObservableObject {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
 
-        // SECURITY: Detect if user typed a seed phrase and warn them
+        // SECURITY: Detect if user typed a seed phrase and warn them (ALWAYS FIRST)
         if looksLikeSeedPhrase(text) {
             let warning = ChatMessage.ai("I detected what looks like a **recovery phrase** in your message. For your security, this message has **not been saved** to conversation history.\n\nNever share your recovery phrase with anyone or type it into a chat.")
             messages.append(ChatMessage.user("[Message redacted — contained sensitive data]"))
@@ -204,51 +220,111 @@ final class ChatViewModel: ObservableObject {
             hasAutoTitled = true
         }
 
-        let intent = intentParser.parse(text)
-        let previousState = conversationState
-        let newState = conversationFlow.processIntent(intent)
-        conversationState = newState
+        // V16 Smart Pipeline
+        // Step 1: Reference resolution
+        let references = referenceResolver.resolve(text, memory: memory)
+        let enrichedText = referenceResolver.enrichWithReferences(text, references)
 
-        let effectiveIntent = resolveEffectiveIntent(rawIntent: intent, previousState: previousState, newState: newState)
+        // Step 2: Multi-intent split
+        let parts = multiIntentHandler.splitIfCompound(enrichedText)
 
+        // Step 3-8: Process all parts in a single async task
         Task { [weak self] in
             guard let self = self else { return }
-
-            // Show processing card for async intents
-            if let processing = self.processingConfig(for: effectiveIntent) {
-                self.activeProcessingState = processing
-                processing.start()
-                self.isTyping = false
+            for part in parts {
+                await self.processSmartPart(part, originalText: text, references: references)
             }
-
-            // Fetch price if needed for price/convert intents
-            await self.fetchPriceIfNeeded(for: effectiveIntent)
-
-            // Advance processing step after price fetch
-            if self.activeProcessingState != nil {
-                self.activeProcessingState?.completeCurrentStep()
-            }
-
-            try? await Task.sleep(nanoseconds: self.typingDelayNanoseconds)
-
-            let context = self.buildContext()
-            let responses = self.responseGenerator.generateResponse(for: effectiveIntent, context: context)
-
-            // Complete remaining processing steps and dismiss
-            if let processing = self.activeProcessingState {
-                // Complete any remaining active steps
-                while !processing.isComplete && !processing.isFailed {
-                    processing.completeCurrentStep()
-                }
-                await self.dismissProcessingCard()
-            }
-
-            self.appendResponses(responses)
-            self.isTyping = false
-
-            // Handle side effects
-            self.handleSideEffects(for: effectiveIntent)
         }
+    }
+
+    /// Processes a single intent part through the V16 smart pipeline.
+    private func processSmartPart(_ text: String, originalText: String, references: [ResolvedEntity]) async {
+        // Step 3: Scored classification with memory
+        let classification = intentParser.classify(text, memory: memory, references: references)
+        let intent = classification.intent
+
+        // Step 4: Extract entities and record in memory
+        let entities = EntityExtractor().extract(from: text)
+        memory.recordUserMessage(originalText, intent: intent, entities: entities)
+        memory.currentFlowState = conversationState
+
+        // Step 5: Smart flow processing
+        let flowAction = conversationFlow.processSmartIntent(intent, memory: memory)
+
+        let effectiveIntent: WalletIntent
+        var resumeHint: String?
+
+        switch flowAction {
+        case .advanceFlow(let newState):
+            let previousState = conversationState
+            conversationState = newState
+            effectiveIntent = resolveEffectiveIntent(rawIntent: intent, previousState: previousState, newState: newState)
+
+        case .pauseAndHandle(let interruptIntent, let hint):
+            effectiveIntent = interruptIntent
+            resumeHint = hint
+
+        case .modifyFlow(let newState):
+            conversationState = newState
+            effectiveIntent = resolveEffectiveIntent(rawIntent: intent, previousState: conversationState, newState: newState)
+
+        case .handleNormally(let normalIntent):
+            effectiveIntent = normalIntent
+        }
+
+        // Show processing card for async intents
+        if let processing = self.processingConfig(for: effectiveIntent) {
+            self.activeProcessingState = processing
+            processing.start()
+            self.isTyping = false
+        }
+
+        // Fetch price if needed
+        await self.fetchPriceIfNeeded(for: effectiveIntent)
+
+        if self.activeProcessingState != nil {
+            self.activeProcessingState?.completeCurrentStep()
+        }
+
+        try? await Task.sleep(nanoseconds: self.typingDelayNanoseconds)
+
+        let context = self.buildContext()
+
+        // Step 6: Memory-aware response generation
+        var responses = self.responseGenerator.generateResponse(
+            for: effectiveIntent, context: context,
+            memory: self.memory, classification: classification
+        )
+
+        // Step 7: Personality adaptation
+        responses = self.personalityEngine.adaptAll(responses, memory: self.memory)
+
+        // Append resume hint if flow was paused
+        if let hint = resumeHint {
+            responses.append(.text(hint))
+        }
+
+        // Complete remaining processing steps and dismiss
+        if let processing = self.activeProcessingState {
+            while !processing.isComplete && !processing.isFailed {
+                processing.completeCurrentStep()
+            }
+            await self.dismissProcessingCard()
+        }
+
+        self.appendResponses(responses)
+        self.isTyping = false
+
+        // Step 8: Record AI response in memory
+        let responseText = responses.compactMap { resp -> String? in
+            if case .text(let t) = resp { return t }
+            return nil
+        }.joined(separator: "\n")
+        let shownData = self.responseGenerator.extractShownData(from: responses, context: context)
+        self.memory.recordAIResponse(responseText, shownData: shownData)
+
+        // Handle side effects
+        self.handleSideEffects(for: effectiveIntent)
     }
 
     func sendMessage(_ text: String) {
@@ -337,6 +413,11 @@ final class ChatViewModel: ObservableObject {
         messages.append(card)
         conversationManager?.persistMessage(role: "assistant", content: card.content)
         isTyping = false
+
+        // Record sent transaction in memory
+        var shownData = ShownData()
+        shownData.sentTransaction = (txid: txid, amount: amount, address: toAddress, fee: 0)
+        memory.recordAIResponse(successText, shownData: shownData)
     }
 
     func handleTransactionFailure(reason: String) {
@@ -410,6 +491,7 @@ final class ChatViewModel: ObservableObject {
         inputText = ""
         isTyping = false
         hasAutoTitled = false
+        memory.reset()
         addGreeting()
     }
 
@@ -424,6 +506,7 @@ final class ChatViewModel: ObservableObject {
         inputText = ""
         isTyping = false
         activeProcessingState = nil
+        memory.reset()
 
         conversationManager?.switchTo(conversation)
 
