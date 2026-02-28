@@ -1,0 +1,607 @@
+/*
+  Localizable.strings (Arabic)
+  BitcoinAIWallet
+
+  Arabic (RTL) translation file for all user-facing strings.
+*/
+
+// MARK: - Common
+
+"common.app_name" = "محفظة بيتكوين الذكية";
+"common.ok" = "حسناً";
+"common.cancel" = "إلغاء";
+"common.confirm" = "تأكيد";
+"common.done" = "تم";
+"common.next" = "التالي";
+"common.back" = "رجوع";
+"common.close" = "إغلاق";
+"common.save" = "حفظ";
+"common.delete" = "حذف";
+"common.copy" = "نسخ";
+"common.share" = "مشاركة";
+"common.retry" = "إعادة المحاولة";
+"common.loading" = "جارٍ التحميل...";
+"common.error" = "خطأ";
+"common.success" = "نجاح";
+"common.copied" = "تم النسخ إلى الحافظة";
+"common.bitcoin" = "بيتكوين";
+"common.btc" = "BTC";
+"common.sats" = "ساتوشي";
+"common.mainnet" = "الشبكة الرئيسية";
+"common.testnet" = "شبكة الاختبار";
+
+// MARK: - Onboarding
+
+"onboarding.welcome_title" = "مرحباً بك في محفظة بيتكوين الذكية";
+"onboarding.welcome_subtitle" = "محفظتك الذكية ذاتية الحفظ للبيتكوين مدعومة بالذكاء الاصطناعي";
+"onboarding.create_wallet" = "إنشاء محفظة جديدة";
+"onboarding.import_wallet" = "استيراد محفظة موجودة";
+"onboarding.seed_phrase_title" = "عبارة الاسترداد الخاصة بك";
+"onboarding.seed_phrase_warning" = "اكتب هذه الكلمات الـ 12 بالترتيب واحفظها في مكان آمن. لا تشارك عبارة الاسترداد مع أي شخص أبداً. أي شخص يمتلك هذه العبارة يمكنه الوصول إلى أموالك.";
+"onboarding.seed_phrase_instruction" = "اكتب كل كلمة بعناية وبالترتيب الصحيح. ستحتاج إلى التحقق منها في الشاشة التالية.";
+"onboarding.seed_verify_title" = "التحقق من عبارة الاسترداد";
+"onboarding.seed_verify_instruction" = "اضغط على الكلمات بالترتيب الصحيح للتحقق من أنك حفظت عبارة الاسترداد.";
+"onboarding.import_title" = "استيراد المحفظة";
+"onboarding.import_instruction" = "أدخل عبارة الاسترداد المكونة من 12 كلمة لاستعادة محفظتك. افصل بين كل كلمة بمسافة.";
+"onboarding.import_placeholder" = "أدخل عبارة الاسترداد المكونة من 12 كلمة...";
+"onboarding.set_passcode_title" = "تعيين رمز المرور";
+"onboarding.set_passcode_subtitle" = "أنشئ رمز مرور مكون من 6 أرقام لتأمين محفظتك";
+"onboarding.enable_biometrics" = "تفعيل المصادقة البيومترية";
+"onboarding.setup_complete" = "اكتمل إعداد المحفظة!";
+"onboarding.i_saved_it" = "لقد حفظت عبارة الاسترداد";
+"onboarding.word_number" = "الكلمة #%d";
+
+// MARK: - Wallet
+
+"wallet.main_wallet" = "المحفظة الرئيسية";
+"wallet.balance" = "الرصيد";
+"wallet.total_balance" = "الرصيد الإجمالي";
+"wallet.available_balance" = "الرصيد المتاح";
+"wallet.pending_balance" = "الرصيد المعلق";
+"wallet.utxo_count" = "مخرجات غير منفقة";
+"wallet.last_updated" = "آخر تحديث";
+"wallet.refreshing" = "جارٍ التحديث...";
+
+// MARK: - Chat
+
+"chat.input_placeholder" = "اسألني أي شيء عن البيتكوين...";
+"chat.greeting" = "مرحباً! أنا مساعدك الذكي للبيتكوين. يمكنني مساعدتك في إرسال واستقبال البيتكوين، والتحقق من رصيدك، والإجابة على أسئلتك. كيف يمكنني المساعدة؟";
+"chat.wallet_ai" = "الذكاء الاصطناعي للمحفظة";
+"chat.thinking" = "جارٍ التفكير...";
+"chat.today" = "اليوم";
+"chat.yesterday" = "أمس";
+"chat.send_confirm_prompt" = "سأرسل %@ BTC إلى %@. رسوم الشبكة تقريباً %@ ساتوشي. هل تريد التأكيد؟";
+"chat.send_success" = "تم إرسال المعاملة بنجاح! معرّف المعاملة هو %@.";
+"chat.send_failed" = "فشلت المعاملة. يرجى المحاولة مرة أخرى أو التحقق من اتصالك.";
+"chat.receive_prompt" = "إليك عنوان استقبال البيتكوين الخاص بك. يمكنك مشاركته أو مسح رمز QR.";
+"chat.balance_response" = "رصيدك الحالي هو %@ BTC (تقريباً %@ دولار أمريكي).";
+"chat.history_response" = "إليك معاملاتك الأخيرة:";
+"chat.unknown_command" = "لست متأكداً أنني أفهم. جرّب السؤال عن رصيدك، أو إرسال البيتكوين، أو استقبال البيتكوين.";
+"chat.insufficient_funds" = "ليس لديك رصيد كافٍ لهذه المعاملة. رصيدك المتاح هو %@ BTC.";
+"chat.invalid_address" = "لا يبدو هذا عنوان بيتكوين صالحاً. يرجى التحقق والمحاولة مرة أخرى.";
+"chat.fee_estimate" = "الرسوم المقدرة الحالية: منخفض %@ sat/vB، متوسط %@ sat/vB، مرتفع %@ sat/vB.";
+"chat.pending_notice" = "لديك %d معاملة معلقة في انتظار التأكيد.";
+"chat.confirmed_notice" = "تم تأكيد معاملتك بـ %d تأكيد(ات).";
+"chat.taproot_note" = "هذا عنوان Taproot (bc1p)، يوفر خصوصية محسنة ورسوماً أقل.";
+"chat.new_address_note" = "تم إنشاء عنوان استقبال جديد لتحسين الخصوصية.";
+"chat.net_flow_summary" = "صافي التدفق: %@ BTC مستلم، %@ BTC مرسل خلال آخر %d معاملة.";
+
+// MARK: - Send
+
+"send.title" = "إرسال بيتكوين";
+"send.amount" = "المبلغ";
+"send.to" = "إلى";
+"send.from" = "من";
+"send.network_fee" = "رسوم الشبكة";
+"send.estimated_time" = "الوقت المقدر";
+"send.remaining" = "الرصيد المتبقي";
+"send.total" = "الإجمالي";
+"send.confirm_and_sign" = "تأكيد وتوقيع";
+"send.change_fee" = "تغيير الرسوم";
+"send.review" = "مراجعة المعاملة";
+"send.signing" = "جارٍ توقيع المعاملة...";
+"send.broadcasting" = "جارٍ بث المعاملة...";
+"send.usd_equivalent" = "المعادل بالدولار";
+"send.sat_per_vbyte" = "sat/vB";
+"send.minutes" = "دقائق";
+
+// MARK: - Receive
+
+"receive.title" = "استقبال بيتكوين";
+"receive.your_address" = "عنوانك";
+"receive.scan_qr" = "مسح رمز QR";
+"receive.address_copied" = "تم نسخ العنوان إلى الحافظة";
+"receive.share_address" = "مشاركة العنوان";
+"receive.new_address" = "إنشاء عنوان جديد";
+"receive.address_type" = "نوع العنوان";
+
+// MARK: - History
+
+"history.title" = "سجل المعاملات";
+"history.recent_transactions" = "المعاملات الأخيرة";
+"history.sent" = "مُرسل";
+"history.received" = "مُستلم";
+"history.pending" = "معلق";
+"history.confirmed" = "مؤكد";
+"history.confirmations" = "التأكيدات";
+"history.no_transactions" = "لا توجد معاملات بعد";
+"history.view_on_explorer" = "عرض في المستكشف";
+"history.transaction_sent" = "تم إرسال المعاملة";
+"history.txid" = "معرّف المعاملة";
+
+// MARK: - Fee
+
+"fee.title" = "رسوم الشبكة";
+"fee.slow" = "بطيء";
+"fee.medium" = "متوسط";
+"fee.fast" = "سريع";
+"fee.custom" = "مخصص";
+"fee.slow_time" = "~٦٠ دقيقة";
+"fee.medium_time" = "~٣٠ دقيقة";
+"fee.fast_time" = "~١٠ دقائق";
+"fee.sat_vb" = "sat/vB";
+
+// MARK: - Quick Action
+
+"quick_action.send" = "إرسال";
+"quick_action.receive" = "استقبال";
+"quick_action.history" = "السجل";
+"quick_action.fees" = "الرسوم";
+"quick_action.settings" = "الإعدادات";
+
+// MARK: - Settings
+
+"settings.title" = "الإعدادات";
+"settings.general" = "عام";
+"settings.security" = "الأمان";
+"settings.network" = "الشبكة";
+"settings.about" = "حول التطبيق";
+"settings.currency" = "العملة";
+"settings.theme" = "المظهر";
+"settings.dark_mode" = "الوضع الداكن";
+"settings.light_mode" = "الوضع الفاتح";
+"settings.system_mode" = "وضع النظام";
+"settings.language" = "اللغة";
+"settings.change_passcode" = "تغيير رمز المرور";
+"settings.biometrics" = "المصادقة البيومترية";
+"settings.backup_wallet" = "نسخ المحفظة احتياطياً";
+"settings.blockbook_server" = "خادم Blockbook";
+"settings.ankr_endpoint" = "نقطة اتصال Ankr";
+"settings.network_status" = "حالة الشبكة";
+"settings.version" = "الإصدار";
+"settings.delete_wallet" = "حذف المحفظة";
+"settings.delete_wallet_warning" = "سيتم حذف محفظتك وجميع البيانات المرتبطة بها نهائياً. تأكد من أنك قمت بنسخ عبارة الاسترداد احتياطياً قبل المتابعة. لا يمكن التراجع عن هذا الإجراء.";
+"settings.connected" = "متصل";
+"settings.disconnected" = "غير متصل";
+"settings.server_configuration" = "إعدادات الخادم";
+"settings.test_connection" = "اختبار";
+"settings.connection_success" = "تم الاتصال بنجاح";
+"settings.invalid_url" = "صيغة الرابط غير صالحة. يجب أن يبدأ بـ https://";
+"settings.connection_info" = "معلومات الاتصال";
+"settings.connection_type" = "نوع الاتصال";
+"settings.current_server" = "الخادم الحالي";
+"settings.network_quality" = "جودة الشبكة";
+"settings.expensive_connection" = "اتصال محدود";
+"settings.low_data_mode" = "وضع البيانات المنخفضة";
+"settings.active" = "نشط";
+"settings.enabled" = "مفعّل";
+"settings.unrestricted_connection" = "اتصال غير محدود";
+"settings.reset_to_default" = "إعادة التعيين إلى الخادم الافتراضي";
+"settings.default_server_note" = "الافتراضي: btc1.trezor.io";
+"settings.cellular" = "بيانات الهاتف";
+"settings.wired" = "سلكي";
+"settings.server_error" = "الخادم أرجع خطأ";
+"settings.auto_lock" = "القفل التلقائي";
+"settings.auto_lock_footer" = "سيتم قفل التطبيق بعد فترة عدم النشاط هذه.";
+"settings.passcode" = "رمز المرور";
+"settings.current_passcode" = "رمز المرور الحالي";
+"settings.new_passcode" = "رمز المرور الجديد";
+"settings.confirm_new_passcode" = "تأكيد رمز المرور الجديد";
+"settings.passcode_changed" = "تم تغيير رمز المرور";
+"settings.passcode_changed_message" = "تم تحديث رمز المرور بنجاح.";
+"settings.biometrics_unavailable" = "المصادقة البيومترية غير متاحة على هذا الجهاز";
+"settings.biometrics_footer" = "استخدم المصادقة البيومترية لفتح التطبيق وتفويض المعاملات.";
+"settings.face_id_description" = "فتح بواسطة Face ID";
+"settings.touch_id_description" = "فتح بواسطة Touch ID";
+"settings.biometric_none_description" = "لا يوجد مستشعر بيومتري متاح";
+"settings.passcode_too_short" = "يجب أن يكون رمز المرور 4 أرقام على الأقل";
+"settings.current_passcode_wrong" = "رمز المرور الحالي غير صحيح";
+"settings.one_minute" = "دقيقة واحدة";
+"settings.five_minutes" = "٥ دقائق";
+"settings.fifteen_minutes" = "١٥ دقيقة";
+"settings.thirty_minutes" = "٣٠ دقيقة";
+
+// MARK: - Backup
+
+"backup.authenticate_title" = "عرض عبارة الاسترداد";
+"backup.authenticate_subtitle" = "قم بالمصادقة لعرض عبارة الاسترداد المكونة من 12 كلمة";
+"backup.authenticate_button" = "مصادقة";
+"backup.never_share" = "لا تشارك عبارة الاسترداد مع أي شخص أبداً.";
+"backup.warning_title" = "عبارة الاسترداد";
+"backup.warning_message" = "اكتب هذه الكلمات الـ 12 بالترتيب واحفظها بأمان.";
+
+// MARK: - Lock Screen
+
+"lock_screen.subtitle" = "محفظتك مقفلة";
+"lock_screen.unlock_button" = "فتح القفل";
+"lock_screen.auth_failed" = "فشلت المصادقة. يرجى المحاولة مرة أخرى.";
+
+// MARK: - Onboarding (missing)
+
+"onboarding.generating_wallet" = "جارٍ إنشاء محفظتك...";
+"onboarding.confirm_passcode" = "تأكيد رمز المرور";
+"onboarding.confirm_passcode_subtitle" = "أعد إدخال رمز المرور المكون من 6 أرقام للتأكيد";
+"onboarding.passcode_mismatch" = "رموز المرور غير متطابقة. يرجى المحاولة مرة أخرى.";
+"onboarding.paste_from_clipboard" = "لصق من الحافظة";
+"onboarding.verification_failed" = "ترتيب خاطئ. يرجى المحاولة مرة أخرى.";
+"onboarding.enable_biometrics_prompt" = "تفعيل %@ للوصول السريع؟";
+"onboarding.skip_for_now" = "تخطي الآن";
+"onboarding.wallet_ready" = "محفظتك جاهزة للاستخدام";
+"onboarding.get_started" = "ابدأ الآن";
+"onboarding.word_count_format" = "%d/%d كلمة";
+"onboarding.import_button" = "استيراد المحفظة";
+"onboarding.securing_wallet" = "جارٍ تأمين محفظتك...";
+
+// MARK: - Error
+
+"error.network" = "خطأ في الشبكة. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.";
+"error.invalid_amount" = "يرجى إدخال مبلغ صالح.";
+"error.invalid_address" = "عنوان البيتكوين المُدخل غير صالح.";
+"error.insufficient_funds" = "رصيد غير كافٍ لإتمام هذه المعاملة.";
+"error.transaction_failed" = "فشلت المعاملة. يرجى المحاولة مرة أخرى.";
+"error.broadcast_failed" = "فشل بث المعاملة إلى الشبكة. يرجى المحاولة مرة أخرى.";
+"error.keychain" = "خطأ في سلسلة المفاتيح. تعذر الوصول إلى التخزين الآمن.";
+"error.biometric_failed" = "فشلت المصادقة البيومترية. يرجى المحاولة مرة أخرى أو استخدام رمز المرور.";
+"error.wallet_corrupted" = "يبدو أن بيانات المحفظة تالفة. يرجى الاستعادة باستخدام عبارة الاسترداد.";
+"error.api" = "خطأ في الخادم. يرجى المحاولة لاحقاً.";
+"error.unknown" = "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.";
+"error.wallet_not_ready" = "المحفظة غير جاهزة. يرجى التأكد من إعداد محفظتك والمحاولة مرة أخرى.";
+"error.fee_estimation_failed" = "تعذر تقدير رسوم الشبكة. يرجى المحاولة مرة أخرى.";
+"error.seed_phrase_invalid" = "عبارة الاسترداد غير صالحة. يرجى التحقق من كلماتك والمحاولة مرة أخرى.";
+
+// MARK: - Biometric
+
+"biometric.face_id" = "Face ID";
+"biometric.touch_id" = "Touch ID";
+"biometric.reason" = "قم بالمصادقة للوصول إلى محفظتك";
+"biometric.sign_reason" = "قم بالمصادقة لتوقيع هذه المعاملة";
+
+// MARK: - Format
+
+"format.btc_amount" = "%@ BTC";
+"format.usd_amount" = "%@ دولار أمريكي";
+"format.fee_rate" = "%@ sat/vB";
+"format.confirmation_count" = "%d تأكيد";
+"format.estimated_minutes" = "~%d دقيقة";
+"format.utxo_count" = "%d مخرجات غير منفقة";
+"format.greeting_with_name" = "مرحباً، %@!";
+
+// MARK: - Chat (Extended)
+
+"chat.price_response_template" = "سعر البتكوين حالياً %@ %@.";
+"chat.price_fetching" = "جارٍ جلب أحدث سعر للبتكوين...";
+"chat.convert_response_template" = "%@ %@ يعادل تقريباً %@ BTC بالسعر الحالي.";
+"chat.new_address_generated" = "جارٍ إنشاء عنوان استقبال جديد...";
+"chat.wallet_health_title" = "تقرير صحة المحفظة";
+"chat.transaction_count_label" = "إجمالي المعاملات: %d";
+"chat.wallet_health_status" = "محفظتك سليمة ومتزامنة.";
+"chat.export_history_response" = "جارٍ تحضير سجل المعاملات للتصدير... سيتم إنشاء ملف CSV لجميع معاملاتك.";
+"chat.utxo_list_response" = "محفظتك تحتوي على %d مخرجات غير منفقة (UTXOs). كل UTXO يمثل عملة قابلة للإنفاق.";
+"chat.bump_fee_response_with_txid" = "لزيادة رسوم المعاملة %@، تحتاج دعم RBF. هذه الميزة قادمة قريباً.";
+"chat.bump_fee_response" = "زيادة الرسوم (RBF) تتيح لك تسريع معاملة معلقة. حدد معرف المعاملة للتسريع.";
+"chat.network_connected" = "حالة الشبكة: متصل. محفظتك متزامنة مع شبكة البتكوين.";
+"chat.network_disconnected" = "حالة الشبكة: غير متصل. يرجى التحقق من اتصالك بالإنترنت.";
+"chat.about_response" = "محفظة بتكوين AI هي محفظة ذاتية الحفظ بواجهة دردشة ذكية. مفاتيحك لا تغادر جهازك أبداً. بدون تبعيات خارجية.";
+"chat.smart_fallback" = "يمكنني مساعدتك! جرب سؤالي عن رصيدك، إرسال أو استقبال بتكوين، عرض الرسوم، أو سعر BTC. اكتب \"مساعدة\" لعرض جميع الأوامر.";
+"chat.nothing_to_confirm" = "لا يوجد شيء معلق للتأكيد الآن. يمكنك بدء معاملة جديدة بكتابة \"ارسل\".";
+"chat.help_title" = "إليك ما يمكنني مساعدتك به:";
+"chat.ask_for_address" = "إلى أين تريد الإرسال؟ يرجى تقديم عنوان بتكوين.";
+"chat.ask_for_amount" = "كم تريد أن ترسل؟ أدخل المبلغ بـ BTC أو sats.";
+"chat.operation_cancelled" = "تم إلغاء العملية. أخبرني إذا احتجت أي شيء آخر.";
+"chat.balance_hidden" = "رصيدك مخفي الآن للخصوصية. اكتب \"اظهر الرصيد\" لإظهاره.";
+"chat.balance_shown" = "رصيدك ظاهر الآن.";
+"chat.wallet_refreshing" = "جارٍ تحديث محفظتك... قد يستغرق هذا لحظة.";
+"chat.wallet_refreshed" = "تمت مزامنة المحفظة بنجاح!";
+"chat.testnet_not_supported" = "عناوين شبكة الاختبار غير مدعومة. يرجى استخدام عنوان بيتكوين على الشبكة الرئيسية.";
+
+// MARK: - Tips (Command Discovery)
+
+// Send Tips
+"tip.snd_1.title" = "أرسل بأي عملة";
+"tip.snd_1.body" = "جرّب: \"ارسل ٥٠ دولار الى bc1q...\" — أحوّل أي عملة تلقائياً!";
+"tip.snd_2.title" = "أرسل الكل";
+"tip.snd_2.body" = "قل \"ارسل الكل الى bc1q...\" لتحويل رصيدك بالكامل في معاملة واحدة.";
+"tip.snd_3.title" = "احتفظ باحتياطي";
+"tip.snd_3.body" = "جرّب: \"ارسل الكل ناقص 0.001 الى bc1q...\" للاحتفاظ برصيد صغير.";
+"tip.snd_4.title" = "أرسل بالساتوشي";
+"tip.snd_4.body" = "جرّب: \"ارسل ٥٠٠٠٠ sats الى bc1q...\" — أقبل sats أو BTC أو أي عملة.";
+"tip.snd_5.title" = "اختر السرعة";
+"tip.snd_5.body" = "قل \"استخدم رسوم سريعة\" أو \"استخدم رسوم بطيئة\" للتحكم بسرعة التأكيد.";
+"tip.snd_6.title" = "إعادة سريعة";
+"tip.snd_6.body" = "قل \"كرر آخر إرسال\" لإعادة معاملتك السابقة بسرعة.";
+
+// Receive Tips
+"tip.rcv_1.title" = "عنوان جديد";
+"tip.rcv_1.body" = "قل \"عنوان جديد\" لإنشاء عنوان استقبال جديد لخصوصية أفضل.";
+"tip.rcv_2.title" = "مبلغ في QR";
+"tip.rcv_2.body" = "جرّب: \"استقبال 0.005 BTC\" لإنشاء رمز QR بمبلغ محدد.";
+"tip.rcv_3.title" = "شارك عنوانك";
+"tip.rcv_3.body" = "قل \"شارك العنوان\" لإرسال عنوان الاستقبال بسرعة.";
+"tip.rcv_4.title" = "امسح QR";
+"tip.rcv_4.body" = "قل \"امسح QR\" لفتح الكاميرا ومسح عنوان بتكوين.";
+"tip.rcv_5.title" = "طلب دفع";
+"tip.rcv_5.body" = "جرّب: \"اطلب 0.005 BTC للعشاء\" لإنشاء طلب دفع مع ملاحظة.";
+
+// Balance Tips
+"tip.bal_1.title" = "وضع الخصوصية";
+"tip.bal_1.body" = "قل \"اخفِ الرصيد\" لإخفاء المبالغ بـ •••••• في الأماكن العامة.";
+"tip.bal_2.title" = "عرض UTXOs";
+"tip.bal_2.body" = "قل \"اعرض UTXOs\" لرؤية جميع المخرجات غير المنفقة.";
+"tip.bal_3.title" = "الرصيد بالساتوشي";
+"tip.bal_3.body" = "جرّب: \"الرصيد بالساتوشي\" لرؤية رصيدك بالساتوشي.";
+"tip.bal_4.title" = "الرصيد بعملات أخرى";
+"tip.bal_4.body" = "جرّب: \"الرصيد باليورو\" لرؤية رصيدك بعملة أخرى.";
+"tip.bal_5.title" = "تحديث سريع";
+"tip.bal_5.body" = "قل \"تحديث\" لمزامنة محفظتك مع أحدث بيانات البلوكتشين.";
+"tip.bal_6.title" = "دمج";
+"tip.bal_6.body" = "قل \"دمج UTXOs\" لدمج المخرجات الصغيرة وتوفير الرسوم المستقبلية.";
+
+// History Tips
+"tip.hst_1.title" = "فلتر السجل";
+"tip.hst_1.body" = "جرّب: \"اعرض المرسل\" أو \"اعرض المستلم\" لفلترة سجل المعاملات.";
+"tip.hst_2.title" = "معاملات أكثر";
+"tip.hst_2.body" = "جرّب: \"آخر ٢٠ معاملة\" لرؤية المزيد من السجل.";
+"tip.hst_3.title" = "المعاملات المعلقة";
+"tip.hst_3.body" = "قل \"معلقة\" لرؤية المعاملات غير المؤكدة فقط.";
+"tip.hst_4.title" = "تفاصيل المعاملة";
+"tip.hst_4.body" = "الصق أي معرّف معاملة وسأعرض لك التفاصيل الكاملة تلقائياً.";
+"tip.hst_5.title" = "تصدير السجل";
+"tip.hst_5.body" = "قل \"تصدير السجل\" لتحميل ملف CSV بجميع معاملاتك.";
+"tip.hst_6.title" = "أول معاملة";
+"tip.hst_6.body" = "جرّب: \"أول معاملة\" لرؤية أول نشاط في محفظتك.";
+
+// Fee Tips
+"tip.fee_1.title" = "تحقق من الرسوم أولاً";
+"tip.fee_1.body" = "قل \"رسوم\" قبل الإرسال لمعرفة تقديرات رسوم الشبكة الحالية.";
+"tip.fee_2.title" = "تنبيهات الرسوم";
+"tip.fee_2.body" = "جرّب: \"نبهني عندما تنخفض الرسوم عن 2 sat/vB\" للإشعار.";
+"tip.fee_3.title" = "تسريع معاملة عالقة";
+"tip.fee_3.body" = "قل \"رفع الرسوم\" إذا كانت معاملتك عالقة لتسريعها عبر RBF.";
+"tip.fee_4.title" = "رسوم مخصصة";
+"tip.fee_4.body" = "جرّب: \"اضبط الرسوم على 5 sat/vB\" عند الإرسال لتحديد معدل رسوم معين.";
+"tip.fee_5.title" = "حالة الميمبول";
+"tip.fee_5.body" = "قل \"حالة الميمبول\" للتحقق من مستويات ازدحام الشبكة الحالية.";
+
+// Settings Tips
+"tip.set_1.title" = "تغيير المظهر";
+"tip.set_1.body" = "قل \"الوضع الداكن\" أو \"الوضع الفاتح\" أو \"مظهر النظام\" للتغيير فوراً.";
+"tip.set_2.title" = "تغيير اللغة";
+"tip.set_2.body" = "قل \"غيّر للعربية\" أو \"غيّر للإسبانية\" لتغيير لغة التطبيق.";
+"tip.set_3.title" = "عملة العرض";
+"tip.set_3.body" = "قل \"اعرض باليورو\" لتغيير عملة العرض الافتراضية.";
+"tip.set_4.title" = "اعرض بالساتوشي";
+"tip.set_4.body" = "قل \"اعرض بالساتوشي\" لعرض جميع المبالغ بالساتوشي بدل BTC.";
+"tip.set_5.title" = "افتح الإعدادات";
+"tip.set_5.body" = "قل \"الإعدادات\" لفتح لوحة الإعدادات الكاملة.";
+
+// Security Tips
+"tip.sec_1.title" = "فحص صحة المحفظة";
+"tip.sec_1.body" = "قل \"فحص الصحة\" لإجراء تدقيق أمني شامل لمحفظتك.";
+"tip.sec_2.title" = "نسخ احتياطي";
+"tip.sec_2.body" = "قل \"نسخ البذرة\" لعرض عبارة الاسترداد المكونة من ١٢ كلمة بأمان.";
+"tip.sec_3.title" = "تفعيل Face ID";
+"tip.sec_3.body" = "قل \"فعّل Face ID\" لإضافة حماية بيومترية للمعاملات.";
+"tip.sec_4.title" = "قفل المحفظة";
+"tip.sec_4.body" = "قل \"قفل\" لقفل محفظتك فوراً وطلب المصادقة.";
+"tip.sec_5.title" = "مؤقت القفل التلقائي";
+"tip.sec_5.body" = "قل \"اقفل بعد دقيقة\" لتغيير مؤقت القفل التلقائي.";
+"tip.sec_6.title" = "وقّع رسالة";
+"tip.sec_6.body" = "قل \"وقّع رسالة\" لإثبات ملكيتك لعنوان بالتشفير.";
+
+// Analytics Tips
+"tip.anl_1.title" = "ملخص الإنفاق";
+"tip.anl_1.body" = "قل \"مصاريف هالشهر\" لعرض تفصيل كامل للإنفاق.";
+"tip.anl_2.title" = "تتبع الدخل";
+"tip.anl_2.body" = "جرّب: \"كم استلمت هذه السنة\" لرؤية إجمالي BTC الوارد.";
+"tip.anl_3.title" = "أكبر معاملة";
+"tip.anl_3.body" = "جرّب: \"أكبر معاملة\" لإيجاد أكبر إرسال أو استقبال.";
+"tip.anl_4.title" = "إجمالي الرسوم المدفوعة";
+"tip.anl_4.body" = "قل \"إجمالي الرسوم المدفوعة\" لمعرفة كم أنفقت على رسوم الشبكة.";
+"tip.anl_5.title" = "متوسط المعاملة";
+"tip.anl_5.body" = "جرّب: \"متوسط المعاملة\" لمعرفة مبلغ الإرسال/الاستقبال المعتاد.";
+
+// Calculator Tips
+"tip.cal_1.title" = "محول ساتوشي";
+"tip.cal_1.body" = "جرّب: \"كم sats في 0.001 BTC\" لتحويل سريع.";
+"tip.cal_2.title" = "تحويل العملات";
+"tip.cal_2.body" = "جرّب: \"حوّل 100 يورو الى BTC\" لتحويل عملات فوري.";
+"tip.cal_3.title" = "فحص الغبار";
+"tip.cal_3.body" = "جرّب: \"هل 500 sats قليلة جداً للإرسال\" للتحقق من حد الغبار.";
+"tip.cal_4.title" = "حاسبة الرسوم";
+"tip.cal_4.body" = "قل \"حاسبة الرسوم\" لتقدير تكلفة المعاملة قبل الإرسال.";
+
+// Price Tips
+"tip.prc_1.title" = "سعر BTC";
+"tip.prc_1.body" = "قل \"سعر BTC\" لرؤية السعر الحالي بعملتك الافتراضية.";
+"tip.prc_2.title" = "حوّل الى BTC";
+"tip.prc_2.body" = "جرّب: \"حوّل ٥٠٠ دولار الى BTC\" لمعرفة كم بتكوين يمكنك شراؤه.";
+"tip.prc_3.title" = "السعر بأي عملة";
+"tip.prc_3.body" = "جرّب: \"السعر باليورو\" أو \"السعر بالين\" لرؤية BTC بعملات أخرى.";
+"tip.prc_4.title" = "بتكويني بعملة أخرى";
+"tip.prc_4.body" = "جرّب: \"كم يساوي BTC بالدينار\" لرؤية رصيدك بعملة أخرى.";
+
+// Network Tips
+"tip.net_1.title" = "تغيير الخادم";
+"tip.net_1.body" = "قل \"غيّر الخادم\" للاتصال بعقدة Blockbook خاصة بك.";
+"tip.net_2.title" = "اختبار الاتصال";
+"tip.net_2.body" = "قل \"اختبر الاتصال\" للتحقق من وقت استجابة الخادم.";
+"tip.net_3.title" = "معلومات الخادم";
+"tip.net_3.body" = "قل \"معلومات الخادم\" لرؤية تفاصيل اتصال Blockbook الحالي.";
+
+// Address Tips
+"tip.adr_1.title" = "تحقق من عنوان";
+"tip.adr_1.body" = "الصق أي عنوان بتكوين — سأخبرك بنوعه تلقائياً.";
+"tip.adr_2.title" = "فحص نوع العنوان";
+"tip.adr_2.body" = "جرّب: \"ما نوع bc1p...\" لمعرفة إذا كان Legacy أو SegWit أو Taproot.";
+"tip.adr_3.title" = "الصق للتنفيذ";
+"tip.adr_3.body" = "الصق أي عنوان بتكوين وسأسألك ماذا تريد أن تفعل به.";
+
+// Sharing Tips
+"tip.shr_1.title" = "طلب دفع";
+"tip.shr_1.body" = "قل \"اطلب 0.005 BTC للعشاء\" لإنشاء QR بمبلغ وملاحظة.";
+"tip.shr_2.title" = "شارك العنوان";
+"tip.shr_2.body" = "قل \"شارك العنوان\" لإرسال عنوان الاستقبال بسرعة عبر أي تطبيق.";
+"tip.shr_3.title" = "انسخ العنوان";
+"tip.shr_3.body" = "قل \"انسخ\" بعد عرض العنوان لنسخه إلى الحافظة.";
+
+// General Tips
+"tip.gen_1.title" = "لغة طبيعية";
+"tip.gen_1.body" = "لا تحتاج أوامر محددة — فقط صِف ما تريد بشكل طبيعي!";
+"tip.gen_2.title" = "متعدد اللغات";
+"tip.gen_2.body" = "أفهم English و العربية و Español — تحدث معي بأي لغة!";
+"tip.gen_3.title" = "قائمة الأوامر الكاملة";
+"tip.gen_3.body" = "قل \"مساعدة\" لرؤية كل ما يمكنني فعله لك.";
+"tip.gen_4.title" = "كشف TXID تلقائي";
+"tip.gen_4.body" = "الصق معرّف معاملة وسأعرض التفاصيل تلقائياً.";
+"tip.gen_5.title" = "بداية سريعة";
+"tip.gen_5.body" = "جرّب: \"الرصيد\" أو \"ارسل\" أو \"استقبل\" أو \"السعر\" أو \"الرسوم\" للبدء.";
+
+// Education Tips
+"tip.edu_1.title" = "تعلّم المزيد";
+"tip.edu_1.body" = "قل \"ما هو التعدين\" لتتعلم كيف يتم إنشاء كتل بتكوين.";
+"tip.edu_2.title" = "استكشف المفاهيم";
+"tip.edu_2.body" = "قل \"ما هو الميمبول\" لتتعلم عن المعاملات غير المؤكدة.";
+"tip.edu_3.title" = "افهم RBF";
+"tip.edu_3.body" = "قل \"ما هو RBF\" لتتعلم عن استبدال الرسوم للمعاملات العالقة.";
+"tip.edu_4.title" = "أنواع العناوين";
+"tip.edu_4.body" = "قل \"ما هو Taproot\" لتتعلم عن أحدث تنسيق للعناوين.";
+"tip.edu_5.title" = "تعلم SegWit";
+"tip.edu_5.body" = "قل \"ما هو SegWit\" لتتعلم عن Segregated Witness ورسوم أقل.";
+
+// MARK: - Processing Steps
+
+// Wallet Refresh
+"processing.refresh.connecting" = "جارٍ الاتصال بالشبكة...";
+"processing.refresh.fetching_balance" = "جارٍ جلب الرصيد...";
+"processing.refresh.syncing_transactions" = "جارٍ مزامنة المعاملات...";
+"processing.refresh.updating_fees" = "جارٍ تحديث تقديرات الرسوم...";
+
+// Balance
+"processing.balance.connecting" = "جارٍ الاتصال بالشبكة...";
+"processing.balance.fetching_balance" = "جارٍ جلب الرصيد...";
+"processing.balance.calculating" = "جارٍ حساب المجاميع...";
+
+// Send Transaction
+"processing.send.signing" = "جارٍ توقيع المعاملة...";
+"processing.send.broadcasting" = "جارٍ البث إلى الشبكة...";
+"processing.send.confirming" = "جارٍ تأكيد البث...";
+
+// History
+"processing.history.fetching_transactions" = "جارٍ جلب المعاملات...";
+"processing.history.processing_data" = "جارٍ معالجة البيانات...";
+
+// Transaction Detail
+"processing.tx_detail.looking_up" = "جارٍ البحث عن المعاملة...";
+"processing.tx_detail.fetching_details" = "جارٍ جلب التفاصيل...";
+
+// Fee Estimates
+"processing.fees.querying_mempool" = "جارٍ استعلام الميمبول...";
+"processing.fees.calculating_rates" = "جارٍ حساب معدلات الرسوم...";
+
+// Price
+"processing.price.fetching" = "جارٍ جلب أحدث سعر...";
+"processing.price.converting" = "جارٍ تحويل العملات...";
+
+// Convert Amount
+"processing.convert.fetching_rate" = "جارٍ جلب سعر الصرف...";
+"processing.convert.calculating" = "جارٍ حساب التحويل...";
+
+// Validate Address
+"processing.validate.checking_format" = "جارٍ فحص تنسيق العنوان...";
+"processing.validate.validating_checksum" = "جارٍ التحقق من المجموع الاختباري...";
+"processing.validate.identifying_type" = "جارٍ تحديد نوع العنوان...";
+
+// Wallet Health
+"processing.health.checking_keychain" = "جارٍ فحص سلسلة المفاتيح...";
+"processing.health.verifying_keys" = "جارٍ التحقق من المفاتيح...";
+"processing.health.testing_network" = "جارٍ اختبار الشبكة...";
+"processing.health.calculating_score" = "جارٍ حساب درجة الصحة...";
+
+// Network Status
+"processing.network.checking_connectivity" = "جارٍ فحص الاتصال...";
+"processing.network.analyzing" = "جارٍ تحليل الشبكة...";
+
+// New Address
+"processing.new_address.deriving_key" = "جارٍ اشتقاق المفتاح...";
+"processing.new_address.verifying" = "جارٍ التحقق من العنوان...";
+
+// Export History
+"processing.export.gathering_data" = "جارٍ جمع بيانات المعاملات...";
+"processing.export.formatting_file" = "جارٍ تنسيق ملف التصدير...";
+
+// Import Wallet
+"processing.import.validating_seed" = "جارٍ التحقق من عبارة الاسترداد...";
+"processing.import.deriving_keys" = "جارٍ اشتقاق المفاتيح...";
+"processing.import.scanning_blockchain" = "جارٍ مسح البلوكتشين...";
+"processing.import.syncing" = "جارٍ مزامنة المحفظة...";
+"processing.import.building_utxos" = "جارٍ بناء مجموعة UTXO...";
+
+// Create Wallet
+"processing.create.generating_entropy" = "جارٍ توليد الإنتروبيا...";
+"processing.create.creating_seed" = "جارٍ إنشاء عبارة الاسترداد...";
+"processing.create.deriving_keys" = "جارٍ اشتقاق المفاتيح...";
+"processing.create.securing_keychain" = "جارٍ التأمين في سلسلة المفاتيح...";
+
+// Delete Wallet
+"processing.delete.authenticating" = "جارٍ المصادقة...";
+"processing.delete.erasing_keys" = "جارٍ مسح المفاتيح...";
+"processing.delete.clearing_data" = "جارٍ مسح البيانات...";
+
+// Backup Seed
+"processing.backup.authenticating" = "جارٍ المصادقة...";
+"processing.backup.decrypting" = "جارٍ فك تشفير البذرة...";
+
+// Bump Fee
+"processing.bump_fee.creating_replacement" = "جارٍ إنشاء معاملة بديلة...";
+"processing.bump_fee.signing" = "جارٍ توقيع المعاملة...";
+"processing.bump_fee.broadcasting" = "جارٍ البث إلى الشبكة...";
+
+// Consolidate UTXOs
+"processing.consolidate.selecting_utxos" = "جارٍ اختيار UTXOs...";
+"processing.consolidate.building_tx" = "جارٍ بناء المعاملة...";
+"processing.consolidate.signing" = "جارٍ توقيع المعاملة...";
+"processing.consolidate.broadcasting" = "جارٍ البث إلى الشبكة...";
+
+// Test Connection
+"processing.test_connection.pinging_server" = "جارٍ اختبار الخادم...";
+"processing.test_connection.checking_api" = "جارٍ فحص الـ API...";
+"processing.test_connection.measuring_latency" = "جارٍ قياس زمن الاستجابة...";
+
+// Change Server
+"processing.change_server.testing_server" = "جارٍ اختبار الخادم الجديد...";
+"processing.change_server.validating_api" = "جارٍ التحقق من الـ API...";
+"processing.change_server.switching" = "جارٍ تبديل الخادم...";
+
+// Rescan Wallet
+"processing.rescan.scanning_addresses" = "جارٍ مسح العناوين...";
+"processing.rescan.fetching_history" = "جارٍ جلب السجل...";
+"processing.rescan.building_utxos" = "جارٍ بناء مجموعة UTXO...";
+"processing.rescan.finalizing" = "جارٍ الإنهاء...";
+
+// Sign Message
+"processing.sign_message.authenticating" = "جارٍ المصادقة...";
+"processing.sign_message.signing" = "جارٍ توقيع الرسالة...";
+
+// Verify Message
+"processing.verify_message.parsing_signature" = "جارٍ تحليل التوقيع...";
+"processing.verify_message.verifying_proof" = "جارٍ التحقق من الإثبات...";
+
+// Spending Summary
+"processing.spending.fetching_transactions" = "جارٍ جلب المعاملات...";
+"processing.spending.calculating" = "جارٍ حساب الإنفاق...";
+"processing.spending.generating_summary" = "جارٍ إنشاء الملخص...";
+
+// Mempool Status
+"processing.mempool.connecting" = "جارٍ الاتصال بالميمبول...";
+"processing.mempool.fetching_mempool" = "جارٍ جلب بيانات الميمبول...";
+"processing.mempool.analyzing" = "جارٍ تحليل الميمبول...";

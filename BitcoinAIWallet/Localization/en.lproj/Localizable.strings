@@ -1,0 +1,645 @@
+/*
+  Localizable.strings (English)
+  BitcoinAIWallet
+
+  Base language file for all user-facing strings.
+*/
+
+// MARK: - Common
+
+"common.app_name" = "Bitcoin AI Wallet";
+"common.ok" = "OK";
+"common.cancel" = "Cancel";
+"common.confirm" = "Confirm";
+"common.done" = "Done";
+"common.next" = "Next";
+"common.back" = "Back";
+"common.close" = "Close";
+"common.save" = "Save";
+"common.delete" = "Delete";
+"common.copy" = "Copy";
+"common.share" = "Share";
+"common.retry" = "Retry";
+"common.loading" = "Loading...";
+"common.error" = "Error";
+"common.success" = "Success";
+"common.copied" = "Copied to clipboard";
+"common.bitcoin" = "Bitcoin";
+"common.btc" = "BTC";
+"common.sats" = "sats";
+"common.mainnet" = "Mainnet";
+"common.testnet" = "Testnet";
+
+// MARK: - Onboarding
+
+"onboarding.welcome_title" = "Welcome to Bitcoin AI Wallet";
+"onboarding.welcome_subtitle" = "Your intelligent, self-custodial Bitcoin wallet powered by AI";
+"onboarding.create_wallet" = "Create New Wallet";
+"onboarding.import_wallet" = "Import Existing Wallet";
+"onboarding.seed_phrase_title" = "Your Recovery Phrase";
+"onboarding.seed_phrase_warning" = "Write down these 12 words in order and store them in a safe place. Never share your recovery phrase with anyone. Anyone with this phrase can access your funds.";
+"onboarding.seed_phrase_instruction" = "Write down each word carefully in the correct order. You will need to verify them on the next screen.";
+"onboarding.seed_verify_title" = "Verify Recovery Phrase";
+"onboarding.seed_verify_instruction" = "Tap the words in the correct order to verify you have saved your recovery phrase.";
+"onboarding.import_title" = "Import Wallet";
+"onboarding.import_instruction" = "Enter your 12-word recovery phrase to restore your wallet. Separate each word with a space.";
+"onboarding.import_placeholder" = "Enter your 12-word recovery phrase...";
+"onboarding.set_passcode_title" = "Set Passcode";
+"onboarding.set_passcode_subtitle" = "Create a 6-digit passcode to secure your wallet";
+"onboarding.enable_biometrics" = "Enable Biometric Authentication";
+"onboarding.setup_complete" = "Wallet Setup Complete!";
+"onboarding.i_saved_it" = "I Saved My Recovery Phrase";
+"onboarding.word_number" = "Word #%d";
+"onboarding.generating_wallet" = "Generating your wallet...";
+"onboarding.confirm_passcode" = "Confirm Passcode";
+"onboarding.confirm_passcode_subtitle" = "Re-enter your 6-digit passcode to confirm";
+"onboarding.passcode_mismatch" = "Passcodes don't match. Please try again.";
+"onboarding.paste_from_clipboard" = "Paste from Clipboard";
+"onboarding.verification_failed" = "Incorrect order. Please try again.";
+"onboarding.enable_biometrics_prompt" = "Enable %@ for quick access?";
+"onboarding.skip_for_now" = "Skip for Now";
+"onboarding.wallet_ready" = "Your wallet is ready to use";
+"onboarding.get_started" = "Get Started";
+"onboarding.word_count_format" = "%d/%d words";
+"onboarding.import_button" = "Import Wallet";
+"onboarding.securing_wallet" = "Securing your wallet...";
+
+// MARK: - Wallet
+
+"wallet.main_wallet" = "Main Wallet";
+"wallet.balance" = "Balance";
+"wallet.total_balance" = "Total Balance";
+"wallet.available_balance" = "Available Balance";
+"wallet.pending_balance" = "Pending Balance";
+"wallet.utxo_count" = "UTXOs";
+"wallet.last_updated" = "Last Updated";
+"wallet.refreshing" = "Refreshing...";
+
+// MARK: - Chat
+
+"chat.input_placeholder" = "Ask me anything about Bitcoin...";
+"chat.greeting" = "Hey! I'm your **Bitcoin AI** assistant.\n\nI can help you **send** and **receive** Bitcoin, check your **balance**, and answer questions.\n\nWhat would you like to do?";
+"chat.wallet_ai" = "Wallet AI";
+"chat.thinking" = "Thinking...";
+"chat.today" = "Today";
+"chat.yesterday" = "Yesterday";
+"chat.just_now" = "just now";
+"chat.send_confirm_prompt" = "Ready to send? Review the details below and **confirm** when ready.";
+"chat.send_success" = "Transaction sent successfully!";
+"chat.send_failed" = "Transaction failed. Please try again or check your connection.";
+"chat.receive_prompt" = "Here is your **Bitcoin** receiving address. Share it or scan the QR code.";
+"chat.balance_response" = "Here's your current balance:";
+"chat.history_response" = "Here are your recent transactions:";
+"chat.unknown_command" = "I'm not sure I understand.\n\nTry asking about your **balance**, **sending** Bitcoin, or **receiving** Bitcoin.";
+"chat.insufficient_funds" = "Insufficient funds for this transaction.";
+"chat.invalid_address" = "That doesn't look like a valid Bitcoin address. Please check and try again.";
+"chat.fee_estimate" = "Current network fees:";
+"chat.pending_notice" = "Pending transaction awaiting confirmation.";
+"chat.confirmed_notice" = "Transaction confirmed.";
+"chat.taproot_note" = "Taproot (bc1p) address — enhanced privacy and lower fees.";
+"chat.new_address_note" = "A new address has been generated for improved privacy.";
+"chat.net_flow_summary" = "Net flow: %@ BTC received, %@ BTC sent over the last %d transactions.";
+
+// MARK: - Send
+
+"send.title" = "Send Bitcoin";
+"send.amount" = "Amount";
+"send.to" = "To";
+"send.from" = "From";
+"send.network_fee" = "Network Fee";
+"send.estimated_time" = "Estimated Time";
+"send.remaining" = "Remaining Balance";
+"send.total" = "Total";
+"send.confirm_and_sign" = "Confirm & Sign";
+"send.change_fee" = "Change Fee";
+"send.review" = "Review Transaction";
+"send.signing" = "Signing transaction...";
+"send.broadcasting" = "Broadcasting transaction...";
+"send.usd_equivalent" = "USD Equivalent";
+"send.sat_per_vbyte" = "sat/vB";
+"send.minutes" = "minutes";
+
+// MARK: - Receive
+
+"receive.title" = "Receive Bitcoin";
+"receive.your_address" = "Your Address";
+"receive.scan_qr" = "Scan QR Code";
+"receive.address_copied" = "Address copied to clipboard";
+"receive.share_address" = "Share Address";
+"receive.new_address" = "Generate New Address";
+"receive.address_type" = "Address Type";
+
+// MARK: - History
+
+"history.title" = "Transaction History";
+"history.recent_transactions" = "Recent Transactions";
+"history.sent" = "Sent";
+"history.received" = "Received";
+"history.pending" = "Pending";
+"history.confirmed" = "Confirmed";
+"history.confirmations" = "Confirmations";
+"history.no_transactions" = "No transactions yet";
+"history.view_on_explorer" = "View on Explorer";
+"history.transaction_sent" = "Transaction Sent";
+"history.txid" = "Transaction ID";
+
+// MARK: - Fee
+
+"fee.title" = "Network Fee";
+"fee.slow" = "Slow";
+"fee.medium" = "Medium";
+"fee.fast" = "Fast";
+"fee.custom" = "Custom";
+"fee.slow_time" = "~60 minutes";
+"fee.medium_time" = "~30 minutes";
+"fee.fast_time" = "~10 minutes";
+"fee.sat_vb" = "sat/vB";
+
+// MARK: - Quick Action
+
+"quick_action.send" = "Send";
+"quick_action.receive" = "Receive";
+"quick_action.history" = "History";
+"quick_action.fees" = "Fees";
+"quick_action.settings" = "Settings";
+
+// MARK: - Settings
+
+"settings.title" = "Settings";
+"settings.general" = "General";
+"settings.security" = "Security";
+"settings.network" = "Network";
+"settings.about" = "About";
+"settings.currency" = "Currency";
+"settings.theme" = "Theme";
+"settings.dark_mode" = "Dark Mode";
+"settings.light_mode" = "Light Mode";
+"settings.system_mode" = "System";
+"settings.language" = "Language";
+"settings.change_passcode" = "Change Passcode";
+"settings.biometrics" = "Biometric Authentication";
+"settings.backup_wallet" = "Backup Wallet";
+"settings.blockbook_server" = "Blockbook Server";
+"settings.ankr_endpoint" = "Ankr Endpoint";
+"settings.network_status" = "Network Status";
+"settings.version" = "Version";
+"settings.delete_wallet" = "Delete Wallet";
+"settings.delete_wallet_warning" = "This will permanently delete your wallet and all associated data. Make sure you have backed up your recovery phrase before proceeding. This action cannot be undone.";
+"settings.connected" = "Connected";
+"settings.disconnected" = "Disconnected";
+"settings.server_configuration" = "Server Configuration";
+"settings.test_connection" = "Test";
+"settings.connection_success" = "Connection successful";
+"settings.invalid_url" = "Invalid URL format. Must start with https://";
+"settings.connection_info" = "Connection Info";
+"settings.connection_type" = "Connection Type";
+"settings.current_server" = "Current Server";
+"settings.network_quality" = "Network Quality";
+"settings.expensive_connection" = "Metered Connection";
+"settings.low_data_mode" = "Low Data Mode";
+"settings.active" = "Active";
+"settings.enabled" = "Enabled";
+"settings.unrestricted_connection" = "Unrestricted Connection";
+"settings.reset_to_default" = "Reset to Default Server";
+"settings.default_server_note" = "Default: btc1.trezor.io";
+"settings.cellular" = "Cellular";
+"settings.wired" = "Wired";
+"settings.server_error" = "Server returned error";
+"settings.auto_lock" = "Auto-Lock";
+"settings.auto_lock_footer" = "The app will lock after this period of inactivity.";
+"settings.passcode" = "Passcode";
+"settings.current_passcode" = "Current Passcode";
+"settings.new_passcode" = "New Passcode";
+"settings.confirm_new_passcode" = "Confirm New Passcode";
+"settings.passcode_changed" = "Passcode Changed";
+"settings.passcode_changed_message" = "Your passcode has been updated successfully.";
+"settings.biometrics_unavailable" = "Biometrics not available on this device";
+"settings.biometrics_footer" = "Use biometrics to unlock the app and authorize transactions.";
+"settings.face_id_description" = "Unlock with Face ID";
+"settings.touch_id_description" = "Unlock with Touch ID";
+"settings.biometric_none_description" = "No biometric sensor available";
+"settings.passcode_too_short" = "Passcode must be at least 4 digits";
+"settings.current_passcode_wrong" = "Current passcode is incorrect";
+"settings.one_minute" = "1 minute";
+"settings.five_minutes" = "5 minutes";
+"settings.fifteen_minutes" = "15 minutes";
+"settings.thirty_minutes" = "30 minutes";
+"settings.tips_enabled" = "Tips & Tricks";
+"settings.tips_enabled_subtitle" = "Show command hints after AI responses";
+"settings.chat" = "Chat";
+"settings.appearance" = "Appearance";
+"settings.color_mode" = "Color Mode";
+"settings.color_mode.light" = "Light";
+"settings.color_mode.dark" = "Dark";
+"settings.color_mode.system" = "System";
+"settings.chat_font" = "Chat Font";
+"settings.chat_font.default" = "Default";
+"settings.chat_font.system" = "System";
+"settings.chat_font.monospace" = "Monospace";
+"settings.chat_font.dyslexic" = "Dyslexic Friendly";
+"settings.chat_font.preview" = "The quick brown fox jumps over the lazy dog";
+
+// MARK: - Backup
+
+"backup.authenticate_title" = "View Recovery Phrase";
+"backup.authenticate_subtitle" = "Authenticate to view your 12-word recovery phrase";
+"backup.authenticate_button" = "Authenticate";
+"backup.never_share" = "Never share your recovery phrase with anyone.";
+"backup.warning_title" = "Recovery Phrase";
+"backup.warning_message" = "Write down these 12 words in order and store them safely.";
+
+// MARK: - Lock Screen
+
+"lock_screen.subtitle" = "Your wallet is locked";
+"lock_screen.unlock_button" = "Unlock";
+"lock_screen.auth_failed" = "Authentication failed. Please try again.";
+
+// MARK: - Error
+
+"error.network" = "Network error. Please check your internet connection and try again.";
+"error.invalid_amount" = "Please enter a valid amount.";
+"error.invalid_address" = "The Bitcoin address entered is not valid.";
+"error.insufficient_funds" = "Insufficient funds to complete this transaction.";
+"error.transaction_failed" = "Transaction failed. Please try again.";
+"error.broadcast_failed" = "Failed to broadcast transaction to the network. Please try again.";
+"error.keychain" = "Keychain error. Unable to access secure storage.";
+"error.biometric_failed" = "Biometric authentication failed. Please try again or use your passcode.";
+"error.wallet_corrupted" = "Wallet data appears to be corrupted. Please restore from your recovery phrase.";
+"error.api" = "Server error. Please try again later.";
+"error.unknown" = "An unexpected error occurred. Please try again.";
+"error.wallet_not_ready" = "Wallet is not ready. Please ensure your wallet is set up and try again.";
+"error.fee_estimation_failed" = "Unable to estimate network fees. Please try again.";
+"error.seed_phrase_invalid" = "The recovery phrase is invalid. Please check your words and try again.";
+
+// MARK: - Biometric
+
+"biometric.face_id" = "Face ID";
+"biometric.touch_id" = "Touch ID";
+"biometric.reason" = "Authenticate to access your wallet";
+"biometric.sign_reason" = "Authenticate to sign this transaction";
+
+// MARK: - Format
+
+"format.btc_amount" = "%@ BTC";
+"format.usd_amount" = "$%@ USD";
+"format.fee_rate" = "%@ sat/vB";
+"format.confirmation_count" = "%d confirmations";
+"format.estimated_minutes" = "~%d minutes";
+"format.utxo_count" = "%d UTXOs";
+"format.greeting_with_name" = "Hey, **%@**! Your wallet is ready.\n\nWhat would you like to do?";
+
+// MARK: - Chat (Extended)
+
+"chat.price_response_template" = "**Bitcoin** is currently trading at **%@ %@**.";
+"chat.price_fetching" = "Fetching the latest Bitcoin price...";
+"chat.convert_response_template" = "%@ %@ is approximately %@ BTC at the current rate.";
+"chat.new_address_generated" = "Fresh receive address generated!";
+"chat.wallet_health_title" = "Wallet Health Report";
+"chat.transaction_count_label" = "Total Transactions: **%d**";
+"chat.wallet_health_status" = "Your wallet is healthy and synced.";
+"chat.export_history_response" = "Preparing your transaction history for export...\n\nThis will generate a **CSV file** of all your transactions.";
+"chat.utxo_list_response" = "Your wallet has **%d** unspent transaction outputs (UTXOs).\n\nEach UTXO represents a spendable coin in your wallet.";
+"chat.bump_fee_intro" = "To bump the fee on this transaction, RBF (Replace-By-Fee) will create a new version with a higher fee.";
+"chat.bump_fee_response_with_txid" = "To bump the fee on transaction %@, you'll need RBF (Replace-By-Fee) support. This feature is coming soon.";
+"chat.bump_fee_response" = "Fee bumping (**RBF**) allows you to speed up a pending transaction by increasing its fee.\n\nSpecify the transaction ID to bump.";
+"chat.network_connected" = "Connected — wallet synced with the Bitcoin network.";
+"chat.network_disconnected" = "Unable to reach the network. Check your internet connection.";
+"chat.about_response" = "**Bitcoin AI Wallet** is a self-custodial Bitcoin wallet with an AI-powered chat interface.\n\n• Your keys **never** leave this device\n• **Zero** external dependencies\n• All cryptography built from scratch";
+"chat.smart_fallback" = "I can help you with that!\n\n• Say **\"balance\"** to check your funds\n• Say **\"send\"** or **\"receive\"** for transactions\n• Say **\"fees\"** or **\"price\"** for market info\n• Say **\"help\"** to see all commands";
+"chat.nothing_to_confirm" = "Nothing pending to confirm right now.\n\nStart a new transaction by saying **\"send\"**.";
+"chat.help_title" = "Here's what I can help you with:";
+"chat.ask_for_address" = "Where would you like to send?\n\nPlease provide a **Bitcoin address**.";
+"chat.ask_for_amount" = "How much would you like to send?\n\nEnter an amount in **BTC** or **sats**.";
+"chat.operation_cancelled" = "Operation cancelled. Let me know if you need anything else.";
+"chat.balance_hidden" = "Balance hidden for privacy. Say **\"show balance\"** to reveal it.";
+"chat.balance_shown" = "Your balance is now visible.";
+"chat.wallet_refreshing" = "Refreshing your wallet... This may take a moment.";
+"chat.wallet_refreshed" = "Wallet synced successfully!";
+"chat.testnet_not_supported" = "Testnet addresses are not supported. Please use a mainnet Bitcoin address.";
+
+// MARK: - Tips (Command Discovery)
+// Every tip shows a command the user can type. Never teaches Bitcoin concepts.
+
+// Send Tips
+"tip.snd_1.title" = "Send in Any Currency";
+"tip.snd_1.body" = "Try: \"send $50 to bc1q...\" — I convert any currency automatically!";
+"tip.snd_2.title" = "Send All";
+"tip.snd_2.body" = "Say \"send all to bc1q...\" to sweep your entire balance in one transaction.";
+"tip.snd_3.title" = "Keep a Reserve";
+"tip.snd_3.body" = "Try: \"send all minus 0.001 to bc1q...\" to keep a small reserve behind.";
+"tip.snd_4.title" = "Send in Sats";
+"tip.snd_4.body" = "Try: \"send 50000 sats to bc1q...\" — I accept sats, BTC, or any fiat currency.";
+"tip.snd_5.title" = "Choose Your Speed";
+"tip.snd_5.body" = "Say \"use fast fee\" or \"use slow fee\" when sending to control confirmation speed.";
+"tip.snd_6.title" = "Quick Redo";
+"tip.snd_6.body" = "Say \"repeat last send\" to quickly redo your previous transaction.";
+
+// Receive Tips
+"tip.rcv_1.title" = "Fresh Address";
+"tip.rcv_1.body" = "Say \"new address\" to generate a fresh receiving address for better privacy.";
+"tip.rcv_2.title" = "Amount in QR";
+"tip.rcv_2.body" = "Try: \"receive 0.005 BTC\" to create a QR code with a specific amount embedded.";
+"tip.rcv_3.title" = "Share Your Address";
+"tip.rcv_3.body" = "Say \"share address\" to quickly send your receiving address to someone.";
+"tip.rcv_4.title" = "Scan a QR";
+"tip.rcv_4.body" = "Say \"scan QR\" to open the camera and scan someone's Bitcoin address.";
+"tip.rcv_5.title" = "Payment Request";
+"tip.rcv_5.body" = "Try: \"request 0.005 BTC for dinner\" to create a payment request with a note.";
+
+// Balance Tips
+"tip.bal_1.title" = "Privacy Mode";
+"tip.bal_1.body" = "Say \"hide balance\" to mask your amounts with •••••• when in public.";
+"tip.bal_2.title" = "View UTXOs";
+"tip.bal_2.body" = "Say \"show UTXOs\" to see all your individual unspent outputs.";
+"tip.bal_3.title" = "Balance in Sats";
+"tip.bal_3.body" = "Try: \"balance in sats\" to see your balance denominated in satoshis.";
+"tip.bal_4.title" = "Balance in Other Currencies";
+"tip.bal_4.body" = "Try: \"balance in EUR\" to see your balance in euros or any other currency.";
+"tip.bal_5.title" = "Quick Refresh";
+"tip.bal_5.body" = "Say \"refresh\" to sync your wallet with the latest blockchain data.";
+"tip.bal_6.title" = "Consolidate";
+"tip.bal_6.body" = "Say \"consolidate UTXOs\" to merge small outputs and save on future fees.";
+
+// History Tips
+"tip.hst_1.title" = "Filter History";
+"tip.hst_1.body" = "Try: \"show sent\" or \"show received\" to filter your transaction history.";
+"tip.hst_2.title" = "More Transactions";
+"tip.hst_2.body" = "Try: \"last 20 transactions\" to see more history at once.";
+"tip.hst_3.title" = "Pending Transactions";
+"tip.hst_3.body" = "Say \"pending\" to see only your unconfirmed transactions.";
+"tip.hst_4.title" = "Transaction Details";
+"tip.hst_4.body" = "Paste any transaction ID and I'll show you the full details automatically.";
+"tip.hst_5.title" = "Export History";
+"tip.hst_5.body" = "Say \"export history\" to download a CSV file of all your transactions.";
+"tip.hst_6.title" = "First Transaction";
+"tip.hst_6.body" = "Try: \"first transaction\" to see your wallet's very first activity.";
+
+// Fee Tips
+"tip.fee_1.title" = "Check Fees First";
+"tip.fee_1.body" = "Say \"fees\" before sending to see current network fee estimates.";
+"tip.fee_2.title" = "Fee Alerts";
+"tip.fee_2.body" = "Try: \"alert me when fees drop below 2 sat/vB\" to get notified.";
+"tip.fee_3.title" = "Bump a Stuck TX";
+"tip.fee_3.body" = "Say \"bump fee\" if your transaction is stuck to speed it up with RBF.";
+"tip.fee_4.title" = "Custom Fee";
+"tip.fee_4.body" = "Try: \"set fee to 5 sat/vB\" when sending to set a specific fee rate.";
+"tip.fee_5.title" = "Mempool Status";
+"tip.fee_5.body" = "Say \"mempool status\" to check current network congestion levels.";
+
+// Settings Tips
+"tip.set_1.title" = "Switch Theme";
+"tip.set_1.body" = "Say \"dark mode\", \"light mode\", or \"system theme\" to change instantly.";
+"tip.set_2.title" = "Change Language";
+"tip.set_2.body" = "Say \"switch to Arabic\" or \"switch to Spanish\" to change the app language.";
+"tip.set_3.title" = "Display Currency";
+"tip.set_3.body" = "Say \"show in EUR\" to change your default display currency.";
+"tip.set_4.title" = "Show in Sats";
+"tip.set_4.body" = "Say \"show in sats\" to display all amounts in satoshis instead of BTC.";
+"tip.set_5.title" = "Open Settings";
+"tip.set_5.body" = "Say \"settings\" to open the full settings panel.";
+
+// Security Tips
+"tip.sec_1.title" = "Health Check";
+"tip.sec_1.body" = "Say \"health check\" to run a full security audit of your wallet.";
+"tip.sec_2.title" = "Backup Seed";
+"tip.sec_2.body" = "Say \"backup seed\" to securely view your 12-word recovery phrase.";
+"tip.sec_3.title" = "Enable Face ID";
+"tip.sec_3.body" = "Say \"enable Face ID\" to add biometric protection for transactions.";
+"tip.sec_4.title" = "Lock Wallet";
+"tip.sec_4.body" = "Say \"lock\" to immediately lock your wallet and require authentication.";
+"tip.sec_5.title" = "Auto-Lock Timer";
+"tip.sec_5.body" = "Say \"lock after 1 minute\" to change the auto-lock timer.";
+"tip.sec_6.title" = "Sign a Message";
+"tip.sec_6.body" = "Say \"sign message\" to cryptographically prove you own an address.";
+
+// Analytics Tips
+"tip.anl_1.title" = "Spending Summary";
+"tip.anl_1.body" = "Say \"spent this month\" for a full spending breakdown.";
+"tip.anl_2.title" = "Income Tracking";
+"tip.anl_2.body" = "Try: \"how much did I receive this year\" to see your total incoming BTC.";
+"tip.anl_3.title" = "Biggest Transaction";
+"tip.anl_3.body" = "Try: \"biggest transaction\" to find your largest send or receive.";
+"tip.anl_4.title" = "Total Fees Paid";
+"tip.anl_4.body" = "Say \"total fees paid\" to see how much you've spent on network fees.";
+"tip.anl_5.title" = "Average Transaction";
+"tip.anl_5.body" = "Try: \"average transaction\" to see your typical send/receive amount.";
+
+// Calculator Tips
+"tip.cal_1.title" = "Sats Converter";
+"tip.cal_1.body" = "Try: \"how many sats is 0.001 BTC\" for a quick conversion.";
+"tip.cal_2.title" = "Currency Conversion";
+"tip.cal_2.body" = "Try: \"convert 100 EUR to BTC\" for instant currency conversion.";
+"tip.cal_3.title" = "Dust Check";
+"tip.cal_3.body" = "Try: \"is 500 sats too small to send\" to check if an amount is dust.";
+"tip.cal_4.title" = "Fee Calculator";
+"tip.cal_4.body" = "Say \"fee calculator\" to estimate the cost of a transaction before sending.";
+
+// Price Tips
+"tip.prc_1.title" = "BTC Price";
+"tip.prc_1.body" = "Say \"BTC price\" to see the current rate in your default currency.";
+"tip.prc_2.title" = "Convert to BTC";
+"tip.prc_2.body" = "Try: \"convert $500 to BTC\" to see how much Bitcoin you can buy.";
+"tip.prc_3.title" = "Price in Any Currency";
+"tip.prc_3.body" = "Try: \"price in EUR\" or \"price in JPY\" to see BTC in other currencies.";
+"tip.prc_4.title" = "My BTC in Fiat";
+"tip.prc_4.body" = "Try: \"how much is my BTC in EUR\" to see your holdings in another currency.";
+
+// Network Tips
+"tip.net_1.title" = "Change Server";
+"tip.net_1.body" = "Say \"change server\" to connect to your own Blockbook node.";
+"tip.net_2.title" = "Test Connection";
+"tip.net_2.body" = "Say \"test connection\" to check your server's response time.";
+"tip.net_3.title" = "Server Info";
+"tip.net_3.body" = "Say \"server info\" to see details about your current Blockbook connection.";
+
+// Address Tips
+"tip.adr_1.title" = "Validate an Address";
+"tip.adr_1.body" = "Try pasting any Bitcoin address — I'll tell you what type it is.";
+"tip.adr_2.title" = "Address Type Check";
+"tip.adr_2.body" = "Try: \"what type is bc1p...\" to identify if it's Legacy, SegWit, or Taproot.";
+"tip.adr_3.title" = "Paste to Act";
+"tip.adr_3.body" = "Paste any Bitcoin address and I'll ask what you want to do with it.";
+
+// Sharing Tips
+"tip.shr_1.title" = "Payment Request";
+"tip.shr_1.body" = "Say \"request 0.005 BTC for dinner\" to create a QR with amount and note.";
+"tip.shr_2.title" = "Share Address";
+"tip.shr_2.body" = "Say \"share address\" to quickly send your receiving address via any app.";
+"tip.shr_3.title" = "Copy Address";
+"tip.shr_3.body" = "Say \"copy\" after viewing an address to copy it to your clipboard.";
+
+// General Tips
+"tip.gen_1.title" = "Natural Language";
+"tip.gen_1.body" = "You don't need exact commands — just describe what you want naturally!";
+"tip.gen_2.title" = "Multilingual";
+"tip.gen_2.body" = "I understand English, العربية, and Español — talk to me in any language!";
+"tip.gen_3.title" = "Full Command List";
+"tip.gen_3.body" = "Say \"help\" to see everything I can do for you.";
+"tip.gen_4.title" = "Auto-Detect TXID";
+"tip.gen_4.body" = "Paste a transaction ID and I'll show the details automatically.";
+"tip.gen_5.title" = "Quick Start";
+"tip.gen_5.body" = "Try: \"balance\", \"send\", \"receive\", \"price\", or \"fees\" to get started.";
+
+// Education Tips (only shown after education commands)
+"tip.edu_1.title" = "Learn More";
+"tip.edu_1.body" = "Say \"what is mining\" to learn how Bitcoin blocks are created.";
+"tip.edu_2.title" = "Explore Concepts";
+"tip.edu_2.body" = "Say \"what is the mempool\" to learn about unconfirmed transactions.";
+"tip.edu_3.title" = "Understand RBF";
+"tip.edu_3.body" = "Say \"what is RBF\" to learn about Replace-By-Fee for stuck transactions.";
+"tip.edu_4.title" = "Address Types";
+"tip.edu_4.body" = "Say \"what is taproot\" to learn about the newest address format.";
+"tip.edu_5.title" = "Learn SegWit";
+"tip.edu_5.body" = "Say \"what is segwit\" to learn about Segregated Witness and lower fees.";
+
+// MARK: - Processing Steps
+
+// Wallet Refresh
+"processing.refresh.connecting" = "Connecting to network...";
+"processing.refresh.fetching_balance" = "Fetching balance...";
+"processing.refresh.syncing_transactions" = "Syncing transactions...";
+"processing.refresh.updating_fees" = "Updating fee estimates...";
+
+// Balance
+"processing.balance.connecting" = "Connecting to network...";
+"processing.balance.fetching_balance" = "Fetching balance...";
+"processing.balance.calculating" = "Calculating totals...";
+
+// Send Transaction
+"processing.send.signing" = "Signing transaction...";
+"processing.send.broadcasting" = "Broadcasting to network...";
+"processing.send.confirming" = "Confirming broadcast...";
+
+// History
+"processing.history.fetching_transactions" = "Fetching transactions...";
+"processing.history.processing_data" = "Processing data...";
+
+// Transaction Detail
+"processing.tx_detail.looking_up" = "Looking up transaction...";
+"processing.tx_detail.fetching_details" = "Fetching details...";
+
+// Fee Estimates
+"processing.fees.querying_mempool" = "Querying mempool...";
+"processing.fees.calculating_rates" = "Calculating fee rates...";
+
+// Price
+"processing.price.fetching" = "Fetching latest price...";
+"processing.price.converting" = "Converting currencies...";
+
+// Convert Amount
+"processing.convert.fetching_rate" = "Fetching exchange rate...";
+"processing.convert.calculating" = "Calculating conversion...";
+
+// Validate Address
+"processing.validate.checking_format" = "Checking address format...";
+"processing.validate.validating_checksum" = "Validating checksum...";
+"processing.validate.identifying_type" = "Identifying address type...";
+
+// Wallet Health
+"processing.health.checking_keychain" = "Checking keychain...";
+"processing.health.verifying_keys" = "Verifying keys...";
+"processing.health.testing_network" = "Testing network...";
+"processing.health.calculating_score" = "Calculating health score...";
+
+// Network Status
+"processing.network.checking_connectivity" = "Checking connectivity...";
+"processing.network.analyzing" = "Analyzing network...";
+
+// New Address
+"processing.new_address.deriving_key" = "Deriving key...";
+"processing.new_address.verifying" = "Verifying address...";
+
+// Export History
+"processing.export.gathering_data" = "Gathering transaction data...";
+"processing.export.formatting_file" = "Formatting export file...";
+
+// Import Wallet
+"processing.import.validating_seed" = "Validating seed phrase...";
+"processing.import.deriving_keys" = "Deriving keys...";
+"processing.import.scanning_blockchain" = "Scanning blockchain...";
+"processing.import.syncing" = "Syncing wallet...";
+"processing.import.building_utxos" = "Building UTXO set...";
+
+// Create Wallet
+"processing.create.generating_entropy" = "Generating entropy...";
+"processing.create.creating_seed" = "Creating seed phrase...";
+"processing.create.deriving_keys" = "Deriving keys...";
+"processing.create.securing_keychain" = "Securing in keychain...";
+
+// Delete Wallet
+"processing.delete.authenticating" = "Authenticating...";
+"processing.delete.erasing_keys" = "Erasing keys...";
+"processing.delete.clearing_data" = "Clearing data...";
+
+// Backup Seed
+"processing.backup.authenticating" = "Authenticating...";
+"processing.backup.decrypting" = "Decrypting seed...";
+
+// Bump Fee
+"processing.bump_fee.creating_replacement" = "Creating replacement tx...";
+"processing.bump_fee.signing" = "Signing transaction...";
+"processing.bump_fee.broadcasting" = "Broadcasting to network...";
+
+// Consolidate UTXOs
+"processing.consolidate.selecting_utxos" = "Selecting UTXOs...";
+"processing.consolidate.building_tx" = "Building transaction...";
+"processing.consolidate.signing" = "Signing transaction...";
+"processing.consolidate.broadcasting" = "Broadcasting to network...";
+
+// Test Connection
+"processing.test_connection.pinging_server" = "Pinging server...";
+"processing.test_connection.checking_api" = "Checking API...";
+"processing.test_connection.measuring_latency" = "Measuring latency...";
+
+// Change Server
+"processing.change_server.testing_server" = "Testing new server...";
+"processing.change_server.validating_api" = "Validating API...";
+"processing.change_server.switching" = "Switching server...";
+
+// Rescan Wallet
+"processing.rescan.scanning_addresses" = "Scanning addresses...";
+"processing.rescan.fetching_history" = "Fetching history...";
+"processing.rescan.building_utxos" = "Building UTXO set...";
+"processing.rescan.finalizing" = "Finalizing...";
+
+// Sign Message
+"processing.sign_message.authenticating" = "Authenticating...";
+"processing.sign_message.signing" = "Signing message...";
+
+// Verify Message
+"processing.verify_message.parsing_signature" = "Parsing signature...";
+"processing.verify_message.verifying_proof" = "Verifying proof...";
+
+// Spending Summary
+"processing.spending.fetching_transactions" = "Fetching transactions...";
+"processing.spending.calculating" = "Calculating spending...";
+"processing.spending.generating_summary" = "Generating summary...";
+
+// Mempool Status
+"processing.mempool.connecting" = "Connecting to mempool...";
+"processing.mempool.fetching_mempool" = "Fetching mempool data...";
+"processing.mempool.analyzing" = "Analyzing mempool...";
+
+// MARK: - Sidebar & Conversations
+
+"sidebar.new_chat" = "New Chat";
+"sidebar.search_placeholder" = "Search conversations...";
+"sidebar.pinned" = "Pinned";
+"sidebar.yesterday" = "Yesterday";
+"sidebar.this_week" = "This Week";
+"sidebar.older" = "Older";
+"sidebar.delete_conversation" = "Delete Conversation";
+"sidebar.delete_confirm_message" = "This conversation and all its messages will be permanently deleted.";
+"sidebar.rename" = "Rename";
+"sidebar.conversation_name" = "Conversation name";
+"sidebar.pin" = "Pin";
+"sidebar.unpin" = "Unpin";
+"sidebar.no_conversations" = "No conversations yet";
+
+// MARK: - Welcome Screen
+
+"welcome.morning" = "Good morning!";
+"welcome.afternoon" = "Good afternoon!";
+"welcome.evening" = "Good evening!";
+"welcome.night" = "How can I help you tonight?";
+"welcome.subtitle" = "Ask me anything about your Bitcoin wallet";
