@@ -549,7 +549,7 @@ final class ChatViewModel: ObservableObject {
     // MARK: - Private Helpers
 
     private func addGreeting() {
-        let greetingText = ResponseTemplates.greeting(walletName: nil)
+        let greetingText = ResponseTemplates.timeAwareGreeting()
         messages.append(.ai(greetingText))
         // Persist the greeting
         conversationManager?.persistMessage(role: "assistant", content: greetingText)

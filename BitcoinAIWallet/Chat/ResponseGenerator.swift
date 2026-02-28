@@ -595,12 +595,8 @@ final class ResponseGenerator {
             }
         }
 
-        // First message in conversation → time-aware greeting
-        if mem.turnCount <= 1 {
-            return [.text(ResponseTemplates.timeAwareGreeting())]
-        }
-
-        // Returning greeting mid-conversation → social response
+        // The welcome greeting is already shown by addGreeting().
+        // Any subsequent greeting intent ("hi", "hello") gets a social response.
         return [.text(ResponseTemplates.socialPositiveResponse())]
     }
 
