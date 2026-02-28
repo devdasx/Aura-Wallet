@@ -11,8 +11,7 @@ import SwiftData
 // Layout — Detail (top to bottom):
 //   1. BalanceHeaderView  — fixed at top, with sidebar toggle
 //   2. ChatView / WelcomeView — flex area
-//   3. QuickActionChips   — horizontal scroll, fixed above input
-//   4. ChatInputBar       — fixed at bottom
+//   3. ChatInputBar       — floating at bottom
 
 struct MainWalletView: View {
     @StateObject private var chatViewModel = ChatViewModel()
@@ -24,6 +23,7 @@ struct MainWalletView: View {
     @State private var selectedConversation: Conversation?
     @State private var isSidebarOpen: Bool = false
     @State private var conversationManager: ConversationManager?
+    @State private var showQRScanner: Bool = false
     @GestureState private var dragOffset: CGFloat = 0
 
     private let sidebarWidth: CGFloat = min(UIScreen.main.bounds.width * 0.82, 320)
@@ -138,6 +138,12 @@ struct MainWalletView: View {
                 chatViewModel.appendResponses(responses)
             }
         }
+        .sheet(isPresented: $showQRScanner) {
+            QRScannerView { scannedText in
+                chatViewModel.inputText = scannedText
+                chatViewModel.sendMessage()
+            }
+        }
         .sheet(isPresented: $chatViewModel.showAuthSheet) {
             AuthenticationSheet(
                 reason: "Authenticate to sign this Bitcoin transaction",
@@ -190,15 +196,12 @@ struct MainWalletView: View {
                     .environmentObject(chatViewModel)
             }
 
-            // 3. Quick Action Chips
-            QuickActionChips(onAction: chatViewModel.handleQuickAction)
-                .padding(.vertical, AppSpacing.sm)
-                .background(AppColors.backgroundPrimary)
-
-            // 4. Chat Input Bar
+            // 3. Chat Input Bar
             ChatInputBar(
                 text: $chatViewModel.inputText,
-                onSend: chatViewModel.sendMessage
+                onSend: { chatViewModel.sendMessage() },
+                onScanQR: { showQRScanner = true },
+                onPaste: { handlePaste() }
             )
         }
         .background(AppColors.backgroundPrimary)
@@ -252,6 +255,41 @@ struct MainWalletView: View {
                 status: tx.status == .confirmed ? "confirmed" : "pending"
             )
         }
+    }
+
+    /// Handles the paste button: reads clipboard, detects content type,
+    /// and populates the input field or sends directly.
+    private func handlePaste() {
+        guard let text = UIPasteboard.general.string else { return }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Check for BIP21 URI
+        if let parsed = BIP21Parser.parse(trimmed) {
+            var command = "send"
+            if let amount = parsed.amount { command += " \(amount) BTC" }
+            command += " to \(parsed.address)"
+            chatViewModel.inputText = command
+            chatViewModel.sendMessage()
+            return
+        }
+
+        // Check for plain Bitcoin address
+        let validator = AddressValidator()
+        if validator.isValid(trimmed) {
+            chatViewModel.inputText = trimmed
+            return
+        }
+
+        // Check for transaction ID (64 hex chars)
+        let hexSet = CharacterSet(charactersIn: "0123456789abcdefABCDEF")
+        if trimmed.count == 64 && trimmed.unicodeScalars.allSatisfy({ hexSet.contains($0) }) {
+            chatViewModel.inputText = trimmed
+            chatViewModel.sendMessage()
+            return
+        }
+
+        // Fallback: paste as plain text
+        chatViewModel.inputText = trimmed
     }
 
     /// Dismisses the keyboard by resigning first responder.

@@ -56,6 +56,7 @@
 		620F4209B4C928AEB6641FA2 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2351A2E3AE7E61C8EDB5CD05 /* WelcomeView.swift */; };
 		642142CB341F2C635F55DA52 /* TransactionSuccessCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43DF5A104D2530B0FF49795E /* TransactionSuccessCard.swift */; };
 		65F62152A3CF8CB52F355DD7 /* TipsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CF73848EEE04C5076DB4314 /* TipsCard.swift */; };
+		66C11A1A256CD50F2851C85C /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D1AB398115AFE16383512A /* QRScannerView.swift */; };
 		67BEC65CF0E704A706C17F74 /* PatternMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 330C5552EC18D1CCA3BD50F1 /* PatternMatcher.swift */; };
 		6F3A5A979824ABA652993D2B /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B710D972CF6CF76563EECFA /* BackupView.swift */; };
 		6F86EA2E10DBCFED22E5B55B /* Wallet.swiftmodule in Resources */ = {isa = PBXBuildFile; fileRef = 7D11D30F671E429696B37286 /* Wallet.swiftmodule */; };
@@ -112,6 +113,7 @@
 		D000CAFC942A2384A0D2B109 /* CurrencyParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA962BA1538AF0DB369DEAF5 /* CurrencyParser.swift */; };
 		D02713B72722D6F3A53AF985 /* TransactionHistoryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D1894F643F9B548C6D2B49 /* TransactionHistoryCard.swift */; };
 		D2C778DD99D87887B32A03BE /* BitcoinAIWalletApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F3D4953543EAECC2AF7943 /* BitcoinAIWalletApp.swift */; };
+		D2EDCDD43687C7D53E576DA3 /* TypingAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F258A1A717A08B86E52B3168 /* TypingAnimator.swift */; };
 		D40D67AA258E8A306BDD8A0C /* BitcoinAIWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 468A7343A85DECB9D552BF5A /* BitcoinAIWalletTests.swift */; };
 		D4F1126D1D8D18FFD5900764 /* CoreDataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73DFC47189894184C26CF759 /* CoreDataStack.swift */; };
 		DAAC48FC669C8F8C10493017 /* ResponseTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07576A3F1249E2578372CD2C /* ResponseTemplates.swift */; };
@@ -201,6 +203,7 @@
 		6C0B7416A1614C2F19E46739 /* AppCornerRadius.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCornerRadius.swift; sourceTree = "<group>"; };
 		6DBFD108CF1E1E96424D5580 /* BitcoinAIWallet.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BitcoinAIWallet.entitlements; sourceTree = "<group>"; };
 		725B8D8497A26E5C07B8722C /* HeroAmountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeroAmountView.swift; sourceTree = "<group>"; };
+		72D1AB398115AFE16383512A /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		73119154160E74161E3ECA10 /* BalanceHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceHeaderView.swift; sourceTree = "<group>"; };
 		73DFC47189894184C26CF759 /* CoreDataStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataStack.swift; sourceTree = "<group>"; };
 		73F0EEACEF5FE4C5B51C9181 /* ConversationFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationFlow.swift; sourceTree = "<group>"; };
@@ -259,6 +262,7 @@
 		EABBE097FD2954AF0F4821D5 /* AddressGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressGenerator.swift; sourceTree = "<group>"; };
 		EBE763133C5015890D934074 /* UserPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPreferences.swift; sourceTree = "<group>"; };
 		EC48AD437ECB2AD8C88ED585 /* .lock */ = {isa = PBXFileReference; path = .lock; sourceTree = "<group>"; };
+		F258A1A717A08B86E52B3168 /* TypingAnimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypingAnimator.swift; sourceTree = "<group>"; };
 		F40B2DA268B0BE53B326FD66 /* AuthenticationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationSheet.swift; sourceTree = "<group>"; };
 		F46F4D575A8B58079E2E60A2 /* SecuritySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecuritySettingsView.swift; sourceTree = "<group>"; };
 		F7055028FFFDE207F653AD97 /* BitcoinAIWalletTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BitcoinAIWalletTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -341,7 +345,9 @@
 				AE09AD1DB5D2BA2209ECD67B /* ChatView.swift */,
 				CB03F05FC6449BE77930BD2A /* MessageBubbleView.swift */,
 				B182E9B10C9A9BFF09AB5E1E /* NewChatWelcomeView.swift */,
+				72D1AB398115AFE16383512A /* QRScannerView.swift */,
 				3B7E4D60359198588D077646 /* QuickActionChips.swift */,
+				F258A1A717A08B86E52B3168 /* TypingAnimator.swift */,
 				197E67845F7693D15D8C587E /* TypingIndicator.swift */,
 			);
 			path = Chat;
@@ -814,6 +820,7 @@
 				055FD616528235DF0D858A01 /* PriceService.swift in Sources */,
 				B9BB85EE5531C9B8D8221B76 /* ProcessingConfigurations.swift in Sources */,
 				8CAEE55F86F9D152EC3D174E /* ProcessingState.swift in Sources */,
+				66C11A1A256CD50F2851C85C /* QRScannerView.swift in Sources */,
 				ECD8E4D6740C77659CC9202B /* QuickActionChips.swift in Sources */,
 				385EF97A8650FD0D91B1D7EE /* ReceiveQRCard.swift in Sources */,
 				2967A634744B7EF56F3B1EAF /* RequestBuilder.swift in Sources */,
@@ -840,6 +847,7 @@
 				B530E05B35488A4EF41B1958 /* TransactionModels.swift in Sources */,
 				87529E59FD92098B1E0B167B /* TransactionSigner.swift in Sources */,
 				642142CB341F2C635F55DA52 /* TransactionSuccessCard.swift in Sources */,
+				D2EDCDD43687C7D53E576DA3 /* TypingAnimator.swift in Sources */,
 				8674B0A6323C6C0F36D6E20F /* TypingIndicator.swift in Sources */,
 				99D2F0EF6D3D0CCF83EC0CA4 /* UTXOModel.swift in Sources */,
 				9A37069905AC84AA39A2AD4F /* UTXOSelector.swift in Sources */,

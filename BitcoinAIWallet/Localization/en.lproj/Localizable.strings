@@ -238,6 +238,8 @@
 "settings.chat_font.monospace" = "Monospace";
 "settings.chat_font.dyslexic" = "Dyslexic Friendly";
 "settings.chat_font.preview" = "The quick brown fox jumps over the lazy dog";
+"settings.typing_haptics" = "Typing Haptics";
+"settings.typing_haptics_subtitle" = "Subtle vibration during AI message animation";
 
 // MARK: - Backup
 
@@ -643,3 +645,8 @@
 "welcome.evening" = "Good evening!";
 "welcome.night" = "How can I help you tonight?";
 "welcome.subtitle" = "Ask me anything about your Bitcoin wallet";
+
+// MARK: - Scanner
+
+"scanner.title" = "Scan QR Code";
+"scanner.error" = "Not a valid Bitcoin QR code";

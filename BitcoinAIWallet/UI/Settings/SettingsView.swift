@@ -277,6 +277,31 @@ struct SettingsView: View {
                     }
             }
             .listRowBackground(AppColors.backgroundCard)
+
+            // Typing haptics toggle
+            HStack(spacing: AppSpacing.md) {
+                settingsIcon("waveform", color: AppColors.accent)
+
+                VStack(alignment: .leading, spacing: AppSpacing.xxxs) {
+                    Text(L10n.Settings.typingHaptics)
+                        .font(AppTypography.bodyMedium)
+                        .foregroundColor(AppColors.textPrimary)
+
+                    Text(L10n.Settings.typingHapticsSubtitle)
+                        .font(AppTypography.labelSmall)
+                        .foregroundColor(AppColors.textTertiary)
+                }
+
+                Spacer()
+
+                Toggle("", isOn: $preferences.typingHapticsEnabled)
+                    .tint(AppColors.accent)
+                    .labelsHidden()
+                    .onChange(of: preferences.typingHapticsEnabled) { _, _ in
+                        HapticManager.selection()
+                    }
+            }
+            .listRowBackground(AppColors.backgroundCard)
         } header: {
             Text(L10n.Settings.chat)
                 .font(AppTypography.labelSmall)

@@ -289,6 +289,8 @@ enum L10n {
         static var colorMode: String { localizedString("settings.color_mode") }
         static var chatFont: String { localizedString("settings.chat_font") }
         static var chatFontPreview: String { localizedString("settings.chat_font.preview") }
+        static var typingHaptics: String { localizedString("settings.typing_haptics") }
+        static var typingHapticsSubtitle: String { localizedString("settings.typing_haptics_subtitle") }
         static var oneMinute: String { localizedString("settings.one_minute") }
         static var fiveMinutes: String { localizedString("settings.five_minutes") }
         static var fifteenMinutes: String { localizedString("settings.fifteen_minutes") }
@@ -390,6 +392,13 @@ enum L10n {
         static var pin: String { localizedString("sidebar.pin") }
         static var unpin: String { localizedString("sidebar.unpin") }
         static var noConversations: String { localizedString("sidebar.no_conversations") }
+    }
+
+    // MARK: - Scanner
+
+    enum Scanner {
+        static var title: String { localizedString("scanner.title") }
+        static var error: String { localizedString("scanner.error") }
     }
 
     // MARK: - Welcome

@@ -21,12 +21,17 @@ struct ChatMessage: Identifiable, Equatable {
     let timestamp: Date
     let responseType: ResponseType?
 
-    init(id: UUID = UUID(), content: String, isFromUser: Bool, timestamp: Date = Date(), responseType: ResponseType? = nil) {
+    /// Whether this message was just created (should animate typing).
+    /// Messages loaded from history have this set to `false`.
+    var isNew: Bool
+
+    init(id: UUID = UUID(), content: String, isFromUser: Bool, timestamp: Date = Date(), responseType: ResponseType? = nil, isNew: Bool = true) {
         self.id = id
         self.content = content
         self.isFromUser = isFromUser
         self.timestamp = timestamp
         self.responseType = responseType
+        self.isNew = isNew
     }
 
     static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {

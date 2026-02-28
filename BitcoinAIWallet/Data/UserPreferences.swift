@@ -67,6 +67,9 @@ final class UserPreferences: ObservableObject {
     /// Whether to show Tips & Tricks after AI responses.
     @AppStorage("tips_enabled") var tipsEnabled: Bool = true
 
+    /// Whether haptic pulses are enabled during AI typing animation.
+    @AppStorage("typing_haptics_enabled") var typingHapticsEnabled: Bool = true
+
     // MARK: - Security Preferences
 
     /// Whether biometric authentication (Face ID / Touch ID) is enabled.
@@ -194,6 +197,7 @@ final class UserPreferences: ObservableObject {
             "auto_lock_timeout",
             "hide_balance",
             "tips_enabled",
+            "typing_haptics_enabled",
             "chat_font",
             "address_type",
             "last_sync_timestamp",
@@ -227,6 +231,7 @@ final class UserPreferences: ObservableObject {
         autoLockTimeout = 300
         hideBalance = false
         tipsEnabled = true
+        typingHapticsEnabled = true
         preferredAddressType = "segwit"
         lastSyncTimestamp = 0
         receiveAddressIndex = 0

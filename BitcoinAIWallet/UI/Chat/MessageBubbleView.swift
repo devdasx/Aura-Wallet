@@ -4,21 +4,16 @@ import SwiftUI
 // Individual chat message bubble.
 //
 // AI messages (left-aligned):
-//   - Background: AppColors.backgroundAIBubble with 1px border
-//   - Corner radius: 20 with bottom-leading 6
-//   - Max width: 82% of screen
-//   - "Wallet AI" label with accent dot above the bubble
-//   - Text: AppTypography.bodyMedium, AppColors.textPrimary
+//   - No background (transparent)
+//   - "Wallet AI" label with accent dot above
+//   - Character-by-character typing animation for new messages
+//   - Tap to skip typing animation
 //
 // User messages (right-aligned):
 //   - Background: AppColors.backgroundUserBubble
-//   - Corner radius: 20 with bottom-trailing 6
-//   - Max width: 82% of screen
-//   - Text: AppTypography.bodyMedium weight .medium, AppColors.textOnUserBubble
-//   - No label above
+//   - Custom BubbleShape with asymmetric corners
 //
 // Card-type messages render the appropriate inline card.
-// Tips and action buttons render below the main content.
 
 struct MessageBubbleView: View {
     let message: ChatMessage
@@ -32,23 +27,8 @@ struct MessageBubbleView: View {
         } else if message.isFromUser {
             userBubble
         } else {
-            aiBubble
-        }
-    }
-
-    // MARK: - AI Bubble
-
-    private var aiBubble: some View {
-        HStack(alignment: .top, spacing: 0) {
-            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                aiLabel
-
-                FormattedMessageView(content: message.content)
-                    .padding(.vertical, AppSpacing.xs)
-            }
-            .frame(maxWidth: bubbleMaxWidth, alignment: .leading)
-
-            Spacer(minLength: spacerMinWidth)
+            AnimatedAIBubble(message: message)
+                .environmentObject(chatViewModel)
         }
     }
 
@@ -197,6 +177,61 @@ struct MessageBubbleView: View {
 
     private var spacerMinWidth: CGFloat {
         UIScreen.main.bounds.width * 0.04
+    }
+}
+
+// MARK: - AnimatedAIBubble
+
+/// AI text bubble with typing animation for new messages.
+/// Old messages from history display instantly without animation.
+private struct AnimatedAIBubble: View {
+    let message: ChatMessage
+    @EnvironmentObject private var chatViewModel: ChatViewModel
+    @StateObject private var animator = TypingAnimator()
+
+    private var bubbleMaxWidth: CGFloat {
+        UIScreen.main.bounds.width * 0.82
+    }
+
+    private var spacerMinWidth: CGFloat {
+        UIScreen.main.bounds.width * 0.04
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                // AI label
+                HStack(spacing: AppSpacing.xs) {
+                    Circle()
+                        .fill(AppColors.accent)
+                        .frame(width: 6, height: 6)
+
+                    Text(L10n.Chat.walletAI)
+                        .font(AppTypography.labelSmall)
+                        .foregroundColor(AppColors.textTertiary)
+                }
+
+                // Animated or instant text
+                FormattedMessageView(content: animator.displayedText)
+                    .padding(.vertical, AppSpacing.xs)
+            }
+            .frame(maxWidth: bubbleMaxWidth, alignment: .leading)
+
+            Spacer(minLength: spacerMinWidth)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if animator.isAnimating {
+                animator.skipToEnd()
+            }
+        }
+        .onAppear {
+            if message.isNew && !message.isFromUser {
+                animator.startTyping(message.content)
+            } else {
+                animator.showInstantly(message.content)
+            }
+        }
     }
 }
 
