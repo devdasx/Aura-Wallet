@@ -101,17 +101,18 @@ final class SmartConversationFlow: ObservableObject {
             return reEntry
         }
 
+        // In send flow + modification (comparative, quantifier) — MUST run before isUnrelated
+        // so "Faster"/"Cheaper" during confirmation modifies the fee, not pauses the flow.
+        if isInSendFlow(activeFlow), let m = meaning, m.modifier != nil {
+            return handleModification(m)
+        }
+
         // In send flow + unrelated intent -> PAUSE
         if isInSendFlow(activeFlow) && isUnrelated(intent) {
             pausedFlow = activeFlow
             let hint = buildResumeHint(activeFlow)
             activeFlow = .idle
             return .pauseAndHandle(intent, resumeHint: hint)
-        }
-
-        // In send flow + modification (comparative, quantifier)
-        if isInSendFlow(activeFlow), let m = meaning, m.modifier != nil {
-            return handleModification(m)
         }
 
         // Paused flow + resuming data -> resume
@@ -486,9 +487,20 @@ final class SmartConversationFlow: ObservableObject {
 
     private func handleModification(_ meaning: SentenceMeaning) -> FlowAction {
         guard let modifier = meaning.modifier else { return .advanceFlow(activeFlow) }
+
+        // At awaitingConfirmation, "faster"/"slower" always means fee — the amount is already set.
+        let isAtConfirmation: Bool = {
+            if case .awaitingConfirmation = activeFlow { return true }
+            return false
+        }()
+
         switch modifier {
-        case .increase: return .modifyFlow(field: meaning.object == .fee ? "fee" : "amount", newValue: "increase")
-        case .decrease: return .modifyFlow(field: meaning.object == .fee ? "fee" : "amount", newValue: "decrease")
+        case .increase:
+            let field = (isAtConfirmation || meaning.object == .fee) ? "fee" : "amount"
+            return .modifyFlow(field: field, newValue: "increase")
+        case .decrease:
+            let field = (isAtConfirmation || meaning.object == .fee) ? "fee" : "amount"
+            return .modifyFlow(field: field, newValue: "decrease")
         case .fastest: return .modifyFlow(field: "fee", newValue: "fast")
         case .cheapest: return .modifyFlow(field: "fee", newValue: "slow")
         case .half: return .modifyFlow(field: "amount", newValue: "half")

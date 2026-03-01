@@ -43,8 +43,11 @@ final class DynamicResponseBuilder {
                 return handleEvaluation(meaning, memory: memory, flow: flow)
             }
 
-            // Comparatives: "Faster" "Cheaper"
-            if meaning.modifier != nil && (meaning.action == .modify(what: "fee") || meaning.action == .modify(what: "amount")) {
+            // Comparatives: "Faster" "Cheaper" — only when NOT in a send flow
+            // (send flow comparatives are handled by SmartConversationFlow → handleFlowModification)
+            if !flow.isInSendFlow(flow.activeFlow),
+               meaning.modifier != nil,
+               (meaning.action == .modify(what: "fee") || meaning.action == .modify(what: "amount")) {
                 return handleComparative(meaning, memory: memory, flow: flow, context: context)
             }
 
