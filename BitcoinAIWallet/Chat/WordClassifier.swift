@@ -123,6 +123,8 @@ final class WordClassifier {
 
     func classify(_ word: String) -> WordType {
         let w = word.lowercased().trimmingCharacters(in: .punctuationCharacters)
+            .replacingOccurrences(of: "\u{2019}", with: "'")  // iOS smart quote → apostrophe
+            .replacingOccurrences(of: "\u{2018}", with: "'")
         if let type = dictionary[w] { return type }
         if let num = Decimal(string: w) { return .number(num) }
         if w.hasPrefix("bc1") || w.hasPrefix("tb1") { return .bitcoinAddress }
@@ -141,6 +143,8 @@ final class WordClassifier {
     /// Combine multi-word phrases into single tokens BEFORE splitting.
     private func preprocessPhrases(_ text: String) -> [String] {
         var result = text.lowercased()
+            .replacingOccurrences(of: "\u{2019}", with: "'")  // iOS smart quote → apostrophe
+            .replacingOccurrences(of: "\u{2018}", with: "'")
         let phrases: [(String, String)] = [
             ("how much", "how_much"), ("how many", "how_many"),
             ("too much", "too_much"), ("too little", "too_little"),
@@ -175,8 +179,10 @@ final class WordClassifier {
 
         // ── Question Words ──
         for (w, k) in [("what", QuestionKind.what), ("what's", .what), ("whats", .what),
-                        ("why", .why), ("how", .how), ("when", .when), ("where", .where),
-                        ("which", .which), ("who", .who),
+                        ("why", .why), ("how", .how), ("how's", .how), ("hows", .how),
+                        ("when", .when), ("when's", .when), ("whens", .when),
+                        ("where", .where), ("where's", .where), ("wheres", .where),
+                        ("which", .which), ("who", .who), ("who's", .who), ("whos", .who),
                         ("how_much", .howMuch), ("how_many", .howMany),
                         ("ما", .what), ("ماذا", .what), ("لماذا", .why), ("كيف", .how),
                         ("متى", .when), ("أين", .where), ("كم", .howMuch), ("how_much_ar", .howMuch),
@@ -319,7 +325,7 @@ final class WordClassifier {
         // ── Bitcoin Nouns ──
         d["balance"] = .bitcoinNoun(.balance); d["رصيد"] = .bitcoinNoun(.balance); d["رصيدي"] = .bitcoinNoun(.balance); d["saldo"] = .bitcoinNoun(.balance)
         d["fee"] = .bitcoinNoun(.fee); d["fees"] = .bitcoinNoun(.fees); d["رسوم"] = .bitcoinNoun(.fees)
-        d["address"] = .bitcoinNoun(.address); d["عنوان"] = .bitcoinNoun(.address); d["dirección"] = .bitcoinNoun(.address)
+        d["address"] = .bitcoinNoun(.address); d["qr"] = .bitcoinNoun(.address); d["عنوان"] = .bitcoinNoun(.address); d["dirección"] = .bitcoinNoun(.address)
         d["transaction"] = .bitcoinNoun(.transaction); d["tx"] = .bitcoinNoun(.transaction); d["transactions"] = .bitcoinNoun(.transactions)
         d["utxo"] = .bitcoinNoun(.utxo); d["utxos"] = .bitcoinNoun(.utxos)
         d["price"] = .bitcoinNoun(.price); d["سعر"] = .bitcoinNoun(.price); d["precio"] = .bitcoinNoun(.price)

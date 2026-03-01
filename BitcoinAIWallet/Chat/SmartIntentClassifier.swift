@@ -28,16 +28,21 @@ final class SmartIntentClassifier {
 
     @MainActor
     func classify(_ input: String, memory: ConversationMemory) -> ClassificationResult {
+        // Normalize smart quotes from iOS keyboard (U+2018/U+2019 → U+0027)
+        let normalizedInput = input
+            .replacingOccurrences(of: "\u{2019}", with: "'")
+            .replacingOccurrences(of: "\u{2018}", with: "'")
+
         // LAYER 1: Language Understanding (V18 — PRIMARY)
-        let meaning = sentenceAnalyzer.analyze(input, memory: memory)
-        let languageResult = meaningResolver.resolve(meaning, memory: memory, entityExtractor: entityExtractor, input: input)
+        let meaning = sentenceAnalyzer.analyze(normalizedInput, memory: memory)
+        let languageResult = meaningResolver.resolve(meaning, memory: memory, entityExtractor: entityExtractor, input: normalizedInput)
 
         // LAYER 2: Pattern Matching (existing — BACKUP)
-        let patternScores = patternMatcher.scoredMatch(input.lowercased())
+        let patternScores = patternMatcher.scoredMatch(normalizedInput.lowercased())
         let bestPattern = patternScores.max()
 
         // LAYER 3: Reference Resolution (V16)
-        let refs = referenceResolver.resolve(input, memory: memory)
+        let refs = referenceResolver.resolve(normalizedInput, memory: memory)
 
         // ── Decision ──
 
@@ -57,19 +62,66 @@ final class SmartIntentClassifier {
 
         // References resolved? Boost.
         if !refs.isEmpty {
-            return boostWithReferences(refs, base: languageResult, memory: memory, input: input)
+            return boostWithReferences(refs, base: languageResult, memory: memory, input: normalizedInput)
         }
 
         // Use whichever is more confident
         if languageResult.confidence > 0.3 { return languageResult }
 
+        // LAYER 4: Follow-up detection (e.g., "And EUR" after price query)
+        if let followUp = detectFollowUpCurrency(normalizedInput, meaning: meaning, memory: memory) {
+            return followUp
+        }
+
         return ClassificationResult(
-            intent: .unknown(rawText: input),
+            intent: .unknown(rawText: normalizedInput),
             confidence: 0.2,
             needsClarification: true,
             alternatives: Array(patternScores.prefix(3)),
             meaning: meaning
         )
+    }
+
+    // MARK: - Follow-Up Currency Detection
+
+    /// Detects follow-up currency queries like "And EUR", "EUR?", "in GBP" after a price intent.
+    @MainActor
+    private func detectFollowUpCurrency(_ input: String, meaning: SentenceMeaning, memory: ConversationMemory) -> ClassificationResult? {
+        guard let lastIntent = memory.lastUserIntent else { return nil }
+        guard case .price = lastIntent else { return nil }
+
+        let currencyMap: [String: String] = [
+            "usd": "USD", "dollar": "USD", "dollars": "USD", "bucks": "USD",
+            "eur": "EUR", "euro": "EUR", "euros": "EUR",
+            "gbp": "GBP", "pound": "GBP", "pounds": "GBP", "quid": "GBP",
+            "jpy": "JPY", "yen": "JPY",
+            "cad": "CAD", "aud": "AUD", "chf": "CHF",
+            "cny": "CNY", "yuan": "CNY",
+            "krw": "KRW", "inr": "INR", "brl": "BRL",
+            "mxn": "MXN", "sek": "SEK", "nok": "NOK",
+        ]
+
+        // Strip conjunction/preposition prefixes: "and EUR", "in GBP", "also EUR"
+        var cleaned = input.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        for prefix in ["and ", "in ", "also ", "plus ", "what about ", "how about "] {
+            if cleaned.hasPrefix(prefix) {
+                cleaned = String(cleaned.dropFirst(prefix.count))
+                break
+            }
+        }
+        cleaned = cleaned.trimmingCharacters(in: .punctuationCharacters).trimmingCharacters(in: .whitespaces)
+
+        if let currency = currencyMap[cleaned] {
+            return ClassificationResult(
+                intent: .price(currency: currency),
+                confidence: 0.85,
+                needsClarification: false,
+                alternatives: [],
+                meaning: meaning
+            )
+        }
+
+        return nil
     }
 
     // MARK: - Reference Boosting

@@ -101,8 +101,9 @@ final class SentenceAnalyzer {
         }
 
         // ── RULE 4: Bare question word ──
+        let hasBitcoinUnit = classified.contains { if case .bitcoinUnit = $0.type { return true }; return false }
         if isQuestion && walletVerb == nil && generalVerb == nil && questionWord != nil && !hasNumber && !hasAddress {
-            return analyzeBareQuestion(questionWord!, bitcoinNoun: bitcoinNoun, memory: memory)
+            return analyzeBareQuestion(questionWord!, bitcoinNoun: bitcoinNoun, hasBitcoinUnit: hasBitcoinUnit, memory: memory)
         }
 
         // ── RULE 5: Comparative alone ──
@@ -132,7 +133,13 @@ final class SentenceAnalyzer {
 
         // ── RULE 10: Wallet verb present ──
         if let verb = walletVerb {
-            let action = mapWalletVerb(verb)
+            // "show" defers to the noun: "show fees" → .showFees, "show address" → .showAddress
+            let action: ResolvedAction
+            if verb == .show, let noun = bitcoinNoun {
+                action = defaultAction(for: noun)
+            } else {
+                action = mapWalletVerb(verb)
+            }
             let object = bitcoinNoun.map { mapBitcoinNoun($0) } ?? .lastMentioned
             let modifier = resolveModifier(comparative, quantifier)
 
@@ -205,7 +212,22 @@ final class SentenceAnalyzer {
     // MARK: - Bare Question Analysis
 
     @MainActor
-    private func analyzeBareQuestion(_ q: QuestionKind, bitcoinNoun: BitcoinConcept?, memory: ConversationMemory) -> SentenceMeaning {
+    private func analyzeBareQuestion(_ q: QuestionKind, bitcoinNoun: BitcoinConcept?, hasBitcoinUnit: Bool = false, memory: ConversationMemory) -> SentenceMeaning {
+        // If a Bitcoin concept is mentioned, use it to determine the action
+        if let noun = bitcoinNoun {
+            switch q {
+            case .what, .howMuch, .howMany, .where, .which:
+                return SentenceMeaning(type: .question, action: defaultAction(for: noun), subject: .user, object: mapBitcoinNoun(noun), modifier: nil, emotion: nil, isNegated: false, confidence: 0.85)
+            case .why, .how, .when, .who:
+                return SentenceMeaning(type: .question, action: .explain, subject: nil, object: mapBitcoinNoun(noun), modifier: nil, emotion: nil, isNegated: false, confidence: 0.8)
+            }
+        }
+
+        // "How much is bitcoin/btc?" → price query (bitcoinUnit without bitcoinNoun)
+        if hasBitcoinUnit && (q == .howMuch || q == .what) {
+            return SentenceMeaning(type: .question, action: .showPrice, subject: nil, object: .price, modifier: nil, emotion: nil, isNegated: false, confidence: 0.85)
+        }
+
         switch q {
         case .what:  return SentenceMeaning(type: .question, action: .explain, subject: nil, object: .lastMentioned, modifier: nil, emotion: nil, isNegated: false, confidence: 0.8)
         case .why:   return SentenceMeaning(type: .question, action: .explain, subject: nil, object: .lastMentioned, modifier: nil, emotion: nil, isNegated: false, confidence: 0.8)
@@ -319,6 +341,7 @@ final class SentenceAnalyzer {
             }
             return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .address, modifier: nil, emotion: nil, isNegated: false, confidence: 0.6)
 
+        case .evaluative(let e): return analyzeEvaluationSync(e)
         case .bitcoinUnit: return SentenceMeaning(type: .question, action: .showPrice, subject: nil, object: .price, modifier: nil, emotion: nil, isNegated: false, confidence: 0.6)
         case .greeting: return SentenceMeaning(type: .emotional, action: nil, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: false, confidence: 0.9)
         default: return SentenceMeaning(type: .empty, action: nil, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: false, confidence: 0.2)
@@ -351,6 +374,18 @@ final class SentenceAnalyzer {
         default:
             return SentenceMeaning(type: .question, action: nil, subject: nil, object: .lastMentioned, modifier: nil, emotion: nil, isNegated: false, confidence: 0.3)
         }
+    }
+
+    private func analyzeEvaluationSync(_ eval: Evaluation) -> SentenceMeaning {
+        let modifier: ResolvedModifier
+        switch eval {
+        case .tooMuch, .expensive, .high: modifier = .tooMuch
+        case .tooLittle, .cheap, .low: modifier = .tooLittle
+        case .enough, .good, .fine, .ok, .perfect, .correct, .right, .reasonable, .fair: modifier = .enough
+        case .bad, .wrong: modifier = .notEnough
+        default: modifier = .enough
+        }
+        return SentenceMeaning(type: .evaluation, action: nil, subject: nil, object: .lastMentioned, modifier: modifier, emotion: nil, isNegated: false, confidence: 0.8)
     }
 
     private func analyzeDirectionalSync(_ dir: NavigationDir) -> SentenceMeaning {
@@ -432,7 +467,14 @@ final class SentenceAnalyzer {
 
     // MARK: - Helpers
 
-    private func isGreetingOrNoise(_ t: WordType) -> Bool { if case .greeting = t { return true }; if case .unknown = t { return true }; return isNoise(t) }
+    private func isGreetingOrNoise(_ t: WordType) -> Bool {
+        if case .greeting = t { return true }
+        if case .unknown = t { return true }
+        if case .questionWord = t { return true }  // "what's up", "how are you"
+        if case .pronoun = t { return true }        // "hi there"
+        if case .comparative = t { return true }    // "what's up" (up = comparative)
+        return isNoise(t)
+    }
     private func isEmotionOrNoise(_ t: WordType) -> Bool { if case .emotion = t { return true }; return isNoise(t) }
     private func isAffOrNeg(_ t: WordType) -> Bool { if case .affirmation = t { return true }; if case .negation = t { return true }; return false }
     private func isNoise(_ t: WordType) -> Bool { if case .article = t { return true }; if case .preposition = t { return true }; if case .conjunction = t { return true }; return false }
