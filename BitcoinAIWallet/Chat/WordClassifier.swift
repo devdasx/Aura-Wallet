@@ -121,8 +121,21 @@ final class WordClassifier {
 
     // MARK: - Public API
 
+    /// Maps a leading currency symbol to its ISO code for fiat-prefixed amounts.
+    private let currencySymbols: [Character: String] = ["$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY"]
+
     func classify(_ word: String) -> WordType {
-        let w = word.lowercased().trimmingCharacters(in: .punctuationCharacters)
+        // Detect fiat-prefixed amounts: "$50", "€100", "£75", "¥1000"
+        let raw = word.lowercased()
+        if let first = raw.first, let currencyCode = currencySymbols[first] {
+            let numPart = String(raw.dropFirst()).trimmingCharacters(in: .punctuationCharacters)
+            if let _ = Decimal(string: numPart) {
+                // Return as a currency marker; the number is extracted separately by EntityExtractor
+                return .unknown("fiat_amount:\(currencyCode)")
+            }
+        }
+
+        let w = raw.trimmingCharacters(in: .punctuationCharacters)
             .replacingOccurrences(of: "\u{2019}", with: "'")  // iOS smart quote → apostrophe
             .replacingOccurrences(of: "\u{2018}", with: "'")
         if let type = dictionary[w] { return type }
@@ -146,6 +159,8 @@ final class WordClassifier {
             .replacingOccurrences(of: "\u{2019}", with: "'")  // iOS smart quote → apostrophe
             .replacingOccurrences(of: "\u{2018}", with: "'")
         let phrases: [(String, String)] = [
+            // Longer phrases MUST come before shorter substrings
+            ("how much to send", "how_much_to_send"),
             ("how much", "how_much"), ("how many", "how_many"),
             ("too much", "too_much"), ("too little", "too_little"),
             ("too expensive", "too_expensive"), ("too cheap", "too_cheap"),
@@ -154,9 +169,14 @@ final class WordClassifier {
             ("go back", "go_back"), ("come on", "come_on"),
             ("right now", "right_now"), ("last time", "last_time"),
             ("do it again", "do_again"), ("same thing", "same_thing"),
+            ("let's go", "let's_go"), ("lets go", "let's_go"),
+            ("use slow fee", "use_slow_fee"), ("use fast fee", "use_fast_fee"),
+            ("use medium fee", "use_medium_fee"),
+            ("change amount", "change_amount"),
             ("go ahead", "go_ahead"), ("start over", "start_over"),
             ("i didn't mean", "didn't_mean"), ("i didnt mean", "didn't_mean"),
             ("that's not what", "not_what_asked"), ("thats not what", "not_what_asked"),
+            ("health check", "health_check"),
             ("what about", "what_about"), ("how about", "how_about"),
             ("try again", "try_again"), ("copy that", "copy_that"),
             ("good enough", "good_enough"), ("sounds good", "sounds_good"),
@@ -165,6 +185,7 @@ final class WordClassifier {
             // Greetings
             ("good morning", "good_morning"), ("good afternoon", "good_afternoon"),
             ("good evening", "good_evening"),
+            ("what's up", "what's_up"), ("whats up", "what's_up"),
             ("what's good", "what's_good"), ("whats good", "what's_good"),
             ("what's happening", "what's_happening"), ("whats happening", "what's_happening"),
             ("how's it going", "how's_it_going"), ("hows it going", "how's_it_going"),
@@ -243,13 +264,14 @@ final class WordClassifier {
         // ── Wallet Verbs ──
         for (w, v) in [("send", WalletAction.send), ("transfer", .send), ("pay", .send), ("move", .send), ("withdraw", .send),
                         ("receive", .receive), ("deposit", .receive),
-                        ("check", .check), ("show", .show), ("display", .show), ("hide", .hide),
+                        ("check", .check), ("show", .show), ("display", .show), ("hide", .hide), ("reveal", .show),
                         ("export", .export), ("bump", .bump), ("accelerate", .bump), ("speed", .bump),
-                        ("refresh", .refresh), ("sync", .sync), ("update", .refresh),
+                        ("refresh", .refresh), ("sync", .sync), ("update", .refresh), ("resync", .refresh), ("reload", .refresh),
                         ("generate", .generate), ("confirm", .confirm), ("cancel", .cancel),
                         ("convert", .convert), ("backup", .backup),
                         ("ارسل", .send), ("أرسل", .send), ("حول", .send), ("ادفع", .send),
                         ("استقبال", .receive), ("أكد", .confirm), ("إلغاء", .cancel),
+                        ("ocultar", .hide),
                         ("enviar", .send), ("envía", .send), ("recibir", .receive),
                         ("confirmar", .confirm), ("cancelar", .cancel)] as [(String, WalletAction)] {
             d[w] = .walletVerb(v)
@@ -258,6 +280,7 @@ final class WordClassifier {
         // ── General Verbs ──
         // ── Common Misspellings ──
         d["hlep"] = .generalVerb(.help)
+        d["mean"] = .generalVerb(.explain)
         d["recieve"] = .walletVerb(.receive)
         d["recive"] = .walletVerb(.receive)
         d["ballance"] = .bitcoinNoun(.balance)
@@ -295,7 +318,7 @@ final class WordClassifier {
         }
 
         // ── Evaluatives ──
-        d["good"] = .evaluative(.good); d["great"] = .evaluative(.good); d["nice"] = .evaluative(.good)
+        d["good"] = .evaluative(.good); d["great"] = .evaluative(.good); d["nice"] = .emotion(.excitement)
         d["bad"] = .evaluative(.bad); d["terrible"] = .evaluative(.bad)
         d["enough"] = .evaluative(.enough); d["good_enough"] = .evaluative(.enough)
         d["not_enough"] = .evaluative(.tooLittle)
@@ -334,6 +357,7 @@ final class WordClassifier {
         // ── Affirmation ──
         for w in ["yes", "yeah", "yep", "yea", "ya", "ok", "okay", "sure",
                    "absolutely", "definitely", "exactly", "agreed", "proceed", "y", "go_ahead",
+                   "let's_go",
                    "نعم", "أكيد", "تمام", "موافق", "يلا",
                    "sí", "si", "dale", "claro", "correcto"] {
             d[w] = .affirmation
@@ -344,7 +368,7 @@ final class WordClassifier {
                    "good_morning", "good_afternoon", "good_evening",
                    "morning", "afternoon", "evening",
                    "heya", "g'day", "greetings",
-                   "what's_good", "what's_happening", "how's_it_going",
+                   "what's_up", "what's_good", "what's_happening", "how's_it_going",
                    "how_ya_doing",
                    "مرحبا", "أهلا", "السلام", "hola", "buenos_días"] {
             d[w] = .greeting
@@ -366,12 +390,21 @@ final class WordClassifier {
         d["confirmation"] = .bitcoinNoun(.confirmation); d["confirmations"] = .bitcoinNoun(.confirmations)
         d["history"] = .bitcoinNoun(.history); d["سجل"] = .bitcoinNoun(.history); d["historial"] = .bitcoinNoun(.history)
         d["transfers"] = .bitcoinNoun(.transactions); d["activity"] = .bitcoinNoun(.history)
+        d["sent"] = .bitcoinNoun(.history); d["received"] = .bitcoinNoun(.history); d["pending"] = .bitcoinNoun(.history)
         d["recent"] = .temporal(.recently); d["trading"] = .bitcoinNoun(.price)
         d["value"] = .bitcoinNoun(.price); d["worth"] = .bitcoinNoun(.price)
-        d["congested"] = .bitcoinNoun(.network); d["status"] = .bitcoinNoun(.network)
+        d["congested"] = .bitcoinNoun(.network)
+        d["health_check"] = .bitcoinNoun(.wallet)
         d["settings"] = .unknown("settings_intent")
         d["cheapest"] = .comparative(.cheaper); d["fastest"] = .comparative(.faster)
         d["slowest"] = .comparative(.slower)
+
+        // ── Fee-level & amount phrase tokens ──
+        d["how_much_to_send"] = .bitcoinNoun(.fees)
+        d["use_slow_fee"] = .unknown("fee_level:slow")
+        d["use_fast_fee"] = .unknown("fee_level:fast")
+        d["use_medium_fee"] = .unknown("fee_level:medium")
+        d["change_amount"] = .unknown("change_amount")
 
         // ── Word Numbers (common spoken amounts) ──
         let wordNumbers: [(String, Decimal)] = [
@@ -405,6 +438,7 @@ final class WordClassifier {
         for w in ["euros", "euro", "eur"] { d[w] = .unknown("currency:EUR") }
         for w in ["pounds", "pound", "gbp", "quid"] { d[w] = .unknown("currency:GBP") }
         for w in ["yen", "jpy"] { d[w] = .unknown("currency:JPY") }
+        for w in ["cad", "canadian"] { d[w] = .unknown("currency:CAD") }
 
         // ── Common words ──
         d["lot"] = .unknown("lot")

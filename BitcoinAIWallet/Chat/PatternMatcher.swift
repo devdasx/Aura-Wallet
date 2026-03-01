@@ -263,6 +263,8 @@ final class PatternMatcher {
             #"\bconvert\s+[\d.]+\s*(?:btc|bitcoin|sats?|satoshis?)\b"#,
             #"\b[\d.]+\s*(?:btc|bitcoin)\s+(?:in|to)\s+(?:usd|eur|gbp|dollars?|euros?|pounds?)\b"#,
             #"\bhow\s+much\s+is\s+[\d.]+\s*(?:sats?|satoshis?)\s+worth\b"#,
+            #"\b(?:is\s+)?(?:btc|bitcoin)\s+(?:going\s+)?(?:up|down)\b"#,
+            #"\bhow\s+many\s+(?:sats?|satoshis?)\s+(?:is|in|are)\s+[\d.]+\s*(?:btc|bitcoin)\b"#,
         ]
         return patterns.compactMap { try? NSRegularExpression(pattern: $0, options: [.caseInsensitive]) }
     }()
@@ -338,6 +340,7 @@ final class PatternMatcher {
         "show activity", "recent activity",
         "transfers", "my transfers", "show transfers",
         "last transaction", "recent transfers",
+        "show sent", "show received", "pending",
         // Arabic
         "سجل", "المعاملات", "سجل المعاملات", "النشاط",
         "المعاملات الأخيرة",

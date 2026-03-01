@@ -111,11 +111,22 @@ final class SmartIntentClassifier {
         }
         cleaned = cleaned.trimmingCharacters(in: .punctuationCharacters).trimmingCharacters(in: .whitespaces)
 
-        // After price: follow-up currency
+        // After price: follow-up currency or sats
         if case .price = lastIntent {
             if let currency = currencyMap[cleaned] {
                 return ClassificationResult(
                     intent: .price(currency: currency),
+                    confidence: 0.85,
+                    needsClarification: false,
+                    alternatives: [],
+                    meaning: meaning
+                )
+            }
+            // "in sats?" after price → sats conversion
+            let satKeywords = ["sats", "sat", "satoshi", "satoshis"]
+            if satKeywords.contains(cleaned) {
+                return ClassificationResult(
+                    intent: .price(currency: nil),
                     confidence: 0.85,
                     needsClarification: false,
                     alternatives: [],

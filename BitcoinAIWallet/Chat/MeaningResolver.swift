@@ -55,8 +55,13 @@ final class MeaningResolver {
         case .showFees:
             return ClassificationResult(intent: .feeEstimate, confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
         case .showPrice:
-            return ClassificationResult(intent: .price(currency: nil), confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+            let detectedCurrency = extractCurrencyFromInput(input)
+            return ClassificationResult(intent: .price(currency: detectedCurrency), confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
         case .showHistory:
+            // Check if user pasted a txid → transaction detail instead of history
+            if let txid = entityExtractor.extractTxId(from: input) {
+                return ClassificationResult(intent: .transactionDetail(txid: txid), confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+            }
             let count = entityExtractor.extractCount(from: input)
             return ClassificationResult(intent: .history(count: count), confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
         case .showAddress:
@@ -91,7 +96,12 @@ final class MeaningResolver {
         case .generate:
             return ClassificationResult(intent: .newAddress, confidence: 0.85, needsClarification: false, alternatives: [], meaning: meaning)
         case .convert:
-            // Try to extract currency from input: "convert to EUR", "convert that to euros"
+            // Try to extract a fiat amount for conversion: "$50", "100 EUR"
+            let extracted = entityExtractor.extractAmount(from: input)
+            if let extracted = extracted, let currency = extracted.currency {
+                return ClassificationResult(intent: .convertAmount(amount: extracted.amount, fromCurrency: currency), confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+            }
+            // Fallback: try to extract currency from input: "convert to EUR", "convert that to euros"
             let detectedCurrency = extractCurrencyFromInput(input)
             return ClassificationResult(intent: .price(currency: detectedCurrency), confidence: 0.7, needsClarification: false, alternatives: [], meaning: meaning)
         case .compare:
@@ -163,10 +173,14 @@ final class MeaningResolver {
     /// Extracts a fiat currency code from input text.
     private func extractCurrencyFromInput(_ input: String) -> String? {
         let lower = input.lowercased()
+        // Check currency symbols first
+        let symbolMap: [(Character, String)] = [("$", "USD"), ("€", "EUR"), ("£", "GBP"), ("¥", "JPY")]
+        for (symbol, code) in symbolMap {
+            if lower.contains(String(symbol)) { return code }
+        }
         let currencyMap: [(String, String)] = [
             ("dollars", "USD"), ("dollar", "USD"), ("bucks", "USD"), ("usd", "USD"),
             ("euros", "EUR"), ("euro", "EUR"), ("eur", "EUR"),
-            ("euros", "EUR"),
             ("pounds", "GBP"), ("pound", "GBP"), ("gbp", "GBP"), ("quid", "GBP"),
             ("yen", "JPY"), ("jpy", "JPY"),
             ("cad", "CAD"), ("aud", "AUD"), ("chf", "CHF"),
