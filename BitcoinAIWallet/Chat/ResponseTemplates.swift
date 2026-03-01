@@ -34,30 +34,6 @@ struct ResponseTemplates {
         return L10n.Chat.greeting
     }
 
-    /// Time-aware greeting with 3 variations per period.
-    static func timeAwareGreeting() -> String {
-        let hour = Calendar.current.component(.hour, from: Date())
-        if hour < 12 {
-            return pick([
-                "Good morning! What can I help you with?",
-                "Morning! How can I help?",
-                "Good morning! What would you like to do?",
-            ])
-        } else if hour < 17 {
-            return pick([
-                "Good afternoon! What would you like to do?",
-                "Hey there! Need anything this afternoon?",
-                "Afternoon! What can I do for you?",
-            ])
-        } else {
-            return pick([
-                "Good evening! Need anything?",
-                "Evening! What can I help with?",
-                "Hey! What are you looking to do tonight?",
-            ])
-        }
-    }
-
     // MARK: - Social Responses
 
     /// Response to "thanks", "thank you", etc.

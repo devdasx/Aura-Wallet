@@ -200,7 +200,6 @@ final class ChatViewModel: ObservableObject {
         self.knowledgeEngine = BitcoinKnowledgeEngine()
         self.entityExtractor = entityExtractor
         self.memory = memory
-        addGreeting()
     }
 
     // MARK: - Public Actions
@@ -714,7 +713,6 @@ final class ChatViewModel: ObservableObject {
         isTyping = false
         hasAutoTitled = false
         memory.reset()
-        addGreeting()
     }
 
     // MARK: - Conversation Loading
@@ -737,8 +735,7 @@ final class ChatViewModel: ObservableObject {
         hasAutoTitled = persisted.contains(where: { $0.role == "user" })
 
         if persisted.isEmpty {
-            // New/empty conversation — show greeting
-            addGreeting()
+            // New/empty conversation — NewChatWelcomeView handles the greeting
         } else {
             // Reconstruct ChatMessage structs from persisted messages
             // isNew: false prevents typing animation on loaded history
@@ -784,15 +781,6 @@ final class ChatViewModel: ObservableObject {
     }
 
     // MARK: - Private Helpers
-
-    private func addGreeting() {
-        let greetingText = ResponseTemplates.timeAwareGreeting()
-        var greeting = ChatMessage.ai(greetingText)
-        greeting.isNew = false  // Greeting shows instantly, no typing animation
-        messages.append(greeting)
-        // Persist the greeting
-        conversationManager?.persistMessage(role: "assistant", content: greetingText)
-    }
 
     /// Fetches BTC price from PriceService if the intent needs it.
     private func fetchPriceIfNeeded(for intent: WalletIntent) async {
