@@ -236,6 +236,7 @@ struct MainWalletView: View {
     /// Bridges wallet state properties into the ChatViewModel so the chat
     /// response generator can access live wallet data (balance, addresses, etc.).
     private func syncWalletStateToChatViewModel() {
+        chatViewModel.walletState = walletState
         chatViewModel.walletBalance = walletState.btcBalance
         chatViewModel.fiatBalance = walletState.fiatBalance
         chatViewModel.pendingBalance = walletState.pendingBalance

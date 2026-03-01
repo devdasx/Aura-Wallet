@@ -131,7 +131,7 @@ struct MessageBubbleView: View {
                 fiatAmount: 0,
                 toAddress: toAddress,
                 onCopyTxid: { chatViewModel.copyTransactionID(txid) },
-                onViewExplorer: {}
+                onViewExplorer: { chatViewModel.openExplorer(txid: txid) }
             )
 
         case let .feeCard(slow, medium, fast):
@@ -201,7 +201,7 @@ private struct AnimatedAIBubble: View {
     /// Whether to show inline action buttons for this message.
     private var showInlineActions: Bool {
         guard let actions = message.inlineActions, !actions.isEmpty else { return false }
-        guard message.isNew && !message.inlineActionsUsed else { return false }
+        guard !message.inlineActionsUsed else { return false }
         return !animator.isAnimating
     }
 
@@ -242,6 +242,8 @@ private struct AnimatedAIBubble: View {
         }
         .onAppear {
             if message.isNew && !message.isFromUser {
+                // Mark as not-new immediately so scrolling off/on won't replay
+                chatViewModel.markMessageNotNew(message.id)
                 animator.startTyping(message.content)
             } else {
                 animator.showInstantly(message.content)

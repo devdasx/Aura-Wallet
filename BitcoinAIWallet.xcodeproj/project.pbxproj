@@ -18,6 +18,7 @@
 		0A3C50B2A7951AF5DFC073A4 /* BulletPointView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93DE5C47EDE16067457BA77C /* BulletPointView.swift */; };
 		0E94AC48577D2028C13AB71F /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDCDEB223DF52F57179D5BF /* AppRouter.swift */; };
 		0EA4DDD5CAAC0D686D6D3967 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3100B08B6CE71FC9BF8232C5 /* Constants.swift */; };
+		0EEC4D9A306A982635EF255B /* WordClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E928D36362D6B2C10650A63 /* WordClassifier.swift */; };
 		0FFF227076D8F82FF9675089 /* EntityExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14BCD27069191147D67B376E /* EntityExtractor.swift */; };
 		15AB84EF953B6C859C78A3D4 /* SecuritySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46F4D575A8B58079E2E60A2 /* SecuritySettingsView.swift */; };
 		189C972A48ECA8BF242F8382 /* UserPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE763133C5015890D934074 /* UserPreferences.swift */; };
@@ -45,6 +46,7 @@
 		40B5BAB016C1BDAACB837C7F /* AppTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7D42202D390B084CADD7F67 /* AppTypography.swift */; };
 		4302462EFCA0EDD83789E0B7 /* WalletTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 674C0097B662E0575663337F /* WalletTabView.swift */; };
 		46066CD9ACC9C2D1E5494EC9 /* AuthenticationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40B2DA268B0BE53B326FD66 /* AuthenticationSheet.swift */; };
+		47CA63D896C38C421B5C442D /* BitcoinKnowledgeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC2FBF3D9F31E3ED1B86E2E3 /* BitcoinKnowledgeEngine.swift */; };
 		4916AEB1F4CE2AB5429AFF28 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BB03362EB4A74D6B8E8AFEF /* ChatInputBar.swift */; };
 		4A39FF7C627F141876CB1F46 /* CreateWalletView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7105FD2AF6C6D6DF5BB0772 /* CreateWalletView.swift */; };
 		4B8DFFF3A589B105605F6ECD /* SeedPhraseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19062CB5C443961FDD8642C7 /* SeedPhraseView.swift */; };
@@ -71,6 +73,7 @@
 		7C83DBEF059C0062BD9F8D23 /* BlockbookEndpoints.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EFCB047B7D181D272F111F1 /* BlockbookEndpoints.swift */; };
 		7D2EF3FA70C48EAE2A6AA5A7 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3034664B84B776FCA27ED3C /* KeychainManager.swift */; };
 		7F840FCEDD43CF0307C74B7D /* AddressGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = EABBE097FD2954AF0F4821D5 /* AddressGenerator.swift */; };
+		7FD331F922C3A3AEFD46ED53 /* SentenceAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6F38F56CA0FDFFA0B1F37AC /* SentenceAnalyzer.swift */; };
 		8255878C1958E03233F609A1 /* EncryptionHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311ED6E21B972BAC54672463 /* EncryptionHelper.swift */; };
 		83EA93E49F2BE179B5E5EC91 /* IntentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D054051BC0446DA978F1A85A /* IntentModels.swift */; };
 		8545DDEAE8CFF07EB1D3D758 /* Wallet.abi.json in Resources */ = {isa = PBXBuildFile; fileRef = D3E43CDDAF36BD87EC3EBA19 /* Wallet.abi.json */; };
@@ -118,6 +121,7 @@
 		CFB66DF74F854077B86C9023 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43E4EEF41CB8CB799A7A866B /* AppDelegate.swift */; };
 		D000CAFC942A2384A0D2B109 /* CurrencyParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA962BA1538AF0DB369DEAF5 /* CurrencyParser.swift */; };
 		D02713B72722D6F3A53AF985 /* TransactionHistoryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D1894F643F9B548C6D2B49 /* TransactionHistoryCard.swift */; };
+		D19C0BFFF3A22322C358AFF0 /* MeaningResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5BA7A549D723C2838D53253 /* MeaningResolver.swift */; };
 		D2C778DD99D87887B32A03BE /* BitcoinAIWalletApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F3D4953543EAECC2AF7943 /* BitcoinAIWalletApp.swift */; };
 		D2EDCDD43687C7D53E576DA3 /* TypingAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F258A1A717A08B86E52B3168 /* TypingAnimator.swift */; };
 		D40D67AA258E8A306BDD8A0C /* BitcoinAIWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 468A7343A85DECB9D552BF5A /* BitcoinAIWalletTests.swift */; };
@@ -225,6 +229,7 @@
 		8B710D972CF6CF76563EECFA /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
 		8BB41F35360A71EF05B740B2 /* CommandsReferenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandsReferenceView.swift; sourceTree = "<group>"; };
 		8D08FB72521B6407A99EB252 /* ECDSASigner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ECDSASigner.swift; sourceTree = "<group>"; };
+		8E928D36362D6B2C10650A63 /* WordClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordClassifier.swift; sourceTree = "<group>"; };
 		8F19399E5E23E67EB83B3C71 /* BlockbookModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockbookModels.swift; sourceTree = "<group>"; };
 		9170289C5AA5C69E24672C3D /* WalletModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletModel.swift; sourceTree = "<group>"; };
 		936178F2F00631513D877ED5 /* ReceiveQRCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiveQRCard.swift; sourceTree = "<group>"; };
@@ -244,6 +249,7 @@
 		B474764D4B5510E34AB8416C /* AppShadows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShadows.swift; sourceTree = "<group>"; };
 		B7105FD2AF6C6D6DF5BB0772 /* CreateWalletView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateWalletView.swift; sourceTree = "<group>"; };
 		B9B2628A0405BC00E0840990 /* HTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPClient.swift; sourceTree = "<group>"; };
+		BC2FBF3D9F31E3ED1B86E2E3 /* BitcoinKnowledgeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BitcoinKnowledgeEngine.swift; sourceTree = "<group>"; };
 		BCEEB0C7FAA972795B9F35FD /* KeyDerivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyDerivation.swift; sourceTree = "<group>"; };
 		BD0653F66BAC3504ED60B2F1 /* FeeSelectionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeeSelectionCard.swift; sourceTree = "<group>"; };
 		BD83B67D5BD2877C053995BA /* AppSpacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSpacing.swift; sourceTree = "<group>"; };
@@ -254,6 +260,7 @@
 		C46EDADE0A57330835D76302 /* ActionButtonsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionButtonsCard.swift; sourceTree = "<group>"; };
 		C5AC9AAC95791991E7F5D6D2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C5BDE5DCC2C6C0EEDCEA0840 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
+		C6F38F56CA0FDFFA0B1F37AC /* SentenceAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceAnalyzer.swift; sourceTree = "<group>"; };
 		C76F618AD87A908004123049 /* TipsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipsEngine.swift; sourceTree = "<group>"; };
 		C955517EF7106A4BDD8333A5 /* IntentParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentParser.swift; sourceTree = "<group>"; };
 		C9D176688DD789326DF5AD70 /* APIConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfiguration.swift; sourceTree = "<group>"; };
@@ -265,6 +272,7 @@
 		D1A62369021A55DAFD8B4246 /* SetPasscodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetPasscodeView.swift; sourceTree = "<group>"; };
 		D3E43CDDAF36BD87EC3EBA19 /* Wallet.abi.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Wallet.abi.json; sourceTree = "<group>"; };
 		D587024244DDC4499DFE0CAC /* BiometricAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuth.swift; sourceTree = "<group>"; };
+		D5BA7A549D723C2838D53253 /* MeaningResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeaningResolver.swift; sourceTree = "<group>"; };
 		D7D42202D390B084CADD7F67 /* AppTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTypography.swift; sourceTree = "<group>"; };
 		DA1E34A0DE242C39C230BAC0 /* Wallet.swiftsourceinfo */ = {isa = PBXFileReference; path = Wallet.swiftsourceinfo; sourceTree = "<group>"; };
 		E145521E57B2A3A4DE69DA09 /* Bech32m.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bech32m.swift; sourceTree = "<group>"; };
@@ -466,6 +474,7 @@
 			isa = PBXGroup;
 			children = (
 				283D48A77C9DC7BDCDAF939B /* AddressValidator.swift */,
+				BC2FBF3D9F31E3ED1B86E2E3 /* BitcoinKnowledgeEngine.swift */,
 				C5BDE5DCC2C6C0EEDCEA0840 /* ChatViewModel.swift */,
 				73F0EEACEF5FE4C5B51C9181 /* ConversationFlow.swift */,
 				4EAF6DFBB7B7A320AD3E02DE /* ConversationManager.swift */,
@@ -474,6 +483,7 @@
 				14BCD27069191147D67B376E /* EntityExtractor.swift */,
 				D054051BC0446DA978F1A85A /* IntentModels.swift */,
 				C955517EF7106A4BDD8333A5 /* IntentParser.swift */,
+				D5BA7A549D723C2838D53253 /* MeaningResolver.swift */,
 				AAF6249962A810D1A2393D39 /* MessageFormatter.swift */,
 				F809DBC6E611A24A9CD50B0D /* MultiIntentHandler.swift */,
 				330C5552EC18D1CCA3BD50F1 /* PatternMatcher.swift */,
@@ -483,7 +493,9 @@
 				726154DDC38ED81D1EAE7DAB /* ReferenceResolver.swift */,
 				515198610CF6EDDC163C3DAA /* ResponseGenerator.swift */,
 				07576A3F1249E2578372CD2C /* ResponseTemplates.swift */,
+				C6F38F56CA0FDFFA0B1F37AC /* SentenceAnalyzer.swift */,
 				C76F618AD87A908004123049 /* TipsEngine.swift */,
+				8E928D36362D6B2C10650A63 /* WordClassifier.swift */,
 			);
 			path = Chat;
 			sourceTree = "<group>";
@@ -789,6 +801,7 @@
 				9BFFD7CF5A93B4CC5099F6C0 /* Bech32m.swift in Sources */,
 				88021EC36886313E15050861 /* BiometricAuth.swift in Sources */,
 				D2C778DD99D87887B32A03BE /* BitcoinAIWalletApp.swift in Sources */,
+				47CA63D896C38C421B5C442D /* BitcoinKnowledgeEngine.swift in Sources */,
 				C96B0347676B4C9FA964C185 /* BlockbookAPI.swift in Sources */,
 				7C83DBEF059C0062BD9F8D23 /* BlockbookEndpoints.swift in Sources */,
 				72BE072B992F2C564DF1D5EE /* BlockbookModels.swift in Sources */,
@@ -830,6 +843,7 @@
 				1AA8BEEBB456EC0A0EF39A35 /* LocalizedStrings.swift in Sources */,
 				A99A37FA2FEB054CAEA47D50 /* Logger.swift in Sources */,
 				557A8318A57B25BDE8346BCD /* MainWalletView.swift in Sources */,
+				D19C0BFFF3A22322C358AFF0 /* MeaningResolver.swift in Sources */,
 				3D6F9297720EA58E6D674069 /* MessageBubbleView.swift in Sources */,
 				7A552196AA29E206B9029459 /* MessageFormatter.swift in Sources */,
 				CA46253B98F460BE4AF753F7 /* Mnemonic.swift in Sources */,
@@ -858,6 +872,7 @@
 				15AB84EF953B6C859C78A3D4 /* SecuritySettingsView.swift in Sources */,
 				4B8DFFF3A589B105605F6ECD /* SeedPhraseView.swift in Sources */,
 				A86F16B0B6453977ED022283 /* SeedVerificationView.swift in Sources */,
+				7FD331F922C3A3AEFD46ED53 /* SentenceAnalyzer.swift in Sources */,
 				2347CBA0EE3CD2AFAD0C8513 /* SetPasscodeView.swift in Sources */,
 				5D23215B1BCCA7499B14C15A /* SettingsView.swift in Sources */,
 				9ED5376C0AD33840DBA75BCA /* StatusDotView.swift in Sources */,
@@ -883,6 +898,7 @@
 				9B882D61403591FE655133AD /* WebSocketManager.swift in Sources */,
 				620F4209B4C928AEB6641FA2 /* WelcomeView.swift in Sources */,
 				C448B1647F64EF6578C697FD /* WitnessBuilder.swift in Sources */,
+				0EEC4D9A306A982635EF255B /* WordClassifier.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

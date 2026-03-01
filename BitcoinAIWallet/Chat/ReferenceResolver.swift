@@ -152,9 +152,9 @@ final class ReferenceResolver {
 
         var resolved: [ResolvedEntity] = []
 
-        if let (amt, unit) = entityExtractor.extractAmount(from: input) {
-            let resolvedUnit = unit
-            resolved.append(.amount(amt, resolvedUnit))
+        if let result = entityExtractor.extractAmount(from: input) {
+            let resolvedUnit = result.unit
+            resolved.append(.amount(result.amount, resolvedUnit))
         }
         if let addr = entityExtractor.extractAddress(from: input) {
             resolved.append(.address(addr))

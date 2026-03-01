@@ -22,14 +22,18 @@ final class EntityExtractor {
     // MARK: - Amount Patterns
 
     /// Matches amounts like: "0.005", ".005", "500000", "0.005 btc", "500000 sats",
-    /// "500k sats", "1.5m sats", "0.5M", "all", "max", "everything"
-    /// Group 1: numeric part (with optional decimal)
-    /// Group 2: optional multiplier suffix (k, m)
-    /// Group 3: optional unit (btc, sat, sats, satoshi, satoshis, bitcoin)
+    /// "500k sats", "1.5m sats", "0.5M", "$50", "€100", "£75", "¥1000",
+    /// "100 dollars", "50 bucks", "200 euros", "all", "max", "everything"
+    /// Group 1: optional leading currency symbol ($, €, £, ¥)
+    /// Group 2: numeric part (with optional decimal)
+    /// Group 3: optional multiplier suffix (k, m)
+    /// Group 4: optional unit (btc, sat, sats, satoshi, satoshis, bitcoin,
+    ///          dollars, dollar, bucks, usd, euros, euro, eur, pounds, pound,
+    ///          quid, gbp, yen, jpy, cad, aud)
     private let amountPattern: NSRegularExpression = {
         // swiftlint:disable:next force_try
         try! NSRegularExpression(
-            pattern: #"(?:^|\s)(\d+\.?\d*|\.\d+)(k|m)?(?:\s*(btc|sat|sats|satoshi|satoshis|bitcoin))?"#,
+            pattern: #"(?:^|\s)([$€£¥])?(\d+\.?\d*|\.\d+)(k|m)?(?:\s*(btc|sat|sats|satoshi|satoshis|bitcoin|dollars?|bucks?|usd|euros?|eur|pounds?|quid|gbp|yen|jpy|cad|aud))?"#,
             options: [.caseInsensitive]
         )
     }()
@@ -117,9 +121,10 @@ final class EntityExtractor {
     func extract(from text: String) -> ParsedEntity {
         var entity = ParsedEntity()
 
-        if let (amount, unit) = extractAmount(from: text) {
-            entity.amount = amount
-            entity.unit = unit
+        if let result = extractAmount(from: text) {
+            entity.amount = result.amount
+            entity.unit = result.unit
+            entity.currency = result.currency
         }
 
         entity.address = extractAddress(from: text)
@@ -130,27 +135,31 @@ final class EntityExtractor {
         return entity
     }
 
-    /// Extracts a Bitcoin amount and optional unit from text.
+    /// Extracts a Bitcoin amount and optional unit from text, with optional fiat currency.
     ///
     /// Supports formats:
-    /// - `"0.005"` -> (0.005, nil)
-    /// - `"0.005 BTC"` -> (0.005, .btc)
-    /// - `"500000 sats"` -> (500000, .sats)
-    /// - `".005"` -> (0.005, nil)
-    /// - `"500k sats"` -> (500000, .sats)
-    /// - `"1.5m sats"` -> (1500000, .sats)
-    /// - `"all"` / `"max"` -> (-1, nil) sentinel value for "send everything"
+    /// - `"0.005"` -> (0.005, nil, nil)
+    /// - `"0.005 BTC"` -> (0.005, .btc, nil)
+    /// - `"500000 sats"` -> (500000, .sats, nil)
+    /// - `".005"` -> (0.005, nil, nil)
+    /// - `"500k sats"` -> (500000, .sats, nil)
+    /// - `"1.5m sats"` -> (1500000, .sats, nil)
+    /// - `"$50"` -> (50, .btc, "USD")
+    /// - `"€100"` -> (100, .btc, "EUR")
+    /// - `"100 dollars"` -> (100, .btc, "USD")
+    /// - `"50 bucks"` -> (50, .btc, "USD")
+    /// - `"all"` / `"max"` -> (-1, .btc, nil) sentinel value for "send everything"
     ///
     /// - Parameter text: The raw user input.
-    /// - Returns: A tuple of (amount, unit) or nil if no amount was found.
-    func extractAmount(from text: String) -> (amount: Decimal, unit: BitcoinUnit)? {
+    /// - Returns: A tuple of (amount, unit, currency) or nil if no amount was found.
+    func extractAmount(from text: String) -> (amount: Decimal, unit: BitcoinUnit, currency: String?)? {
         let nsText = text as NSString
         let fullRange = NSRange(location: 0, length: nsText.length)
 
         // Check for "all" / "max" / "everything" first
         if allAmountPattern.firstMatch(in: text, options: [], range: fullRange) != nil {
             // Return -1 as sentinel for "send entire balance"
-            return (Decimal(-1), .btc)
+            return (Decimal(-1), .btc, nil)
         }
 
         // Try numeric amount pattern
@@ -158,14 +167,21 @@ final class EntityExtractor {
             return nil
         }
 
-        // Extract the numeric part (group 1)
-        guard match.range(at: 1).location != NSNotFound else { return nil }
-        let numberString = nsText.substring(with: match.range(at: 1))
+        // Group 1: optional currency symbol prefix ($, €, £, ¥)
+        var currencyFromSymbol: String?
+        if match.range(at: 1).location != NSNotFound {
+            let symbol = nsText.substring(with: match.range(at: 1))
+            currencyFromSymbol = currencyCodeFromSymbol(symbol)
+        }
+
+        // Extract the numeric part (group 2)
+        guard match.range(at: 2).location != NSNotFound else { return nil }
+        let numberString = nsText.substring(with: match.range(at: 2))
         guard var amount = Decimal(string: numberString) else { return nil }
 
-        // Apply multiplier suffix if present (group 2)
-        if match.range(at: 2).location != NSNotFound {
-            let suffix = nsText.substring(with: match.range(at: 2)).lowercased()
+        // Apply multiplier suffix if present (group 3)
+        if match.range(at: 3).location != NSNotFound {
+            let suffix = nsText.substring(with: match.range(at: 3)).lowercased()
             switch suffix {
             case "k":
                 amount = amount * 1_000
@@ -176,15 +192,32 @@ final class EntityExtractor {
             }
         }
 
-        // Determine unit from group 3
+        // Determine unit and fiat currency from group 4
         var unit: BitcoinUnit?
-        if match.range(at: 3).location != NSNotFound {
-            let unitString = nsText.substring(with: match.range(at: 3)).lowercased()
-            unit = parseUnit(unitString)
+        var fiatCurrency: String?
+        if match.range(at: 4).location != NSNotFound {
+            let unitString = nsText.substring(with: match.range(at: 4)).lowercased()
+            // Try BTC units first
+            if let btcUnit = parseUnit(unitString) {
+                unit = btcUnit
+            } else {
+                // Try fiat currency synonyms
+                fiatCurrency = parseFiatCurrency(unitString)
+            }
+        }
+
+        // Currency symbol prefix takes precedence if no trailing unit was found
+        if fiatCurrency == nil, let symbolCurrency = currencyFromSymbol {
+            fiatCurrency = symbolCurrency
         }
 
         // Sanity check: amount must be positive (except -1 sentinel)
         guard amount > 0 else { return nil }
+
+        // If a fiat currency was detected, set unit to .btc (system will convert)
+        if fiatCurrency != nil {
+            return (amount, .btc, fiatCurrency)
+        }
 
         // Heuristic: if no unit was specified but the amount is a large integer,
         // assume satoshis. Amounts >= 1000 without a decimal are likely sats.
@@ -192,7 +225,7 @@ final class EntityExtractor {
             unit = .sats
         }
 
-        return (amount, unit ?? .btc)
+        return (amount, unit ?? .btc, nil)
     }
 
     /// Extracts a Bitcoin address from text.
@@ -300,6 +333,37 @@ final class EntityExtractor {
             return .sats
         case "satoshi", "satoshis":
             return .satoshis
+        default:
+            return nil
+        }
+    }
+
+    /// Maps a currency symbol character to its ISO 4217 code.
+    private func currencyCodeFromSymbol(_ symbol: String) -> String? {
+        switch symbol {
+        case "$": return "USD"
+        case "€": return "EUR"
+        case "£": return "GBP"
+        case "¥": return "JPY"
+        default: return nil
+        }
+    }
+
+    /// Maps a fiat currency synonym to its ISO 4217 code.
+    private func parseFiatCurrency(_ text: String) -> String? {
+        switch text.lowercased() {
+        case "dollars", "dollar", "bucks", "buck", "usd":
+            return "USD"
+        case "euros", "euro", "eur":
+            return "EUR"
+        case "pounds", "pound", "quid", "gbp":
+            return "GBP"
+        case "yen", "jpy":
+            return "JPY"
+        case "cad":
+            return "CAD"
+        case "aud":
+            return "AUD"
         default:
             return nil
         }

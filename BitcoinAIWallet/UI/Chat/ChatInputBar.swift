@@ -128,6 +128,7 @@ struct ChatInputBar: View {
 
     private func sendIfNotEmpty() {
         guard canSend else { return }
+        isFocused = false
         HapticManager.lightTap()
         onSend()
     }

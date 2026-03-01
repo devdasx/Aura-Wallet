@@ -1,22 +1,65 @@
 // MARK: - IntentParser.swift
 // Bitcoin AI Wallet
 //
-// Scored intent classifier with 7 signal sources:
-// 1. Keyword matching (PatternMatcher — existing keyword lists)
-// 2. Entity presence (address → send, txid → transaction detail)
-// 3. Conversation context (flow state, what was last discussed)
-// 4. Reference resolution (memory-resolved entities boost matching intent)
-// 5. Semantic verb mapping (synonyms, sentence structure)
-// 6. Social/meta detection (thanks, complaints, emoji)
-// 7. Negation detection (reduces confidence of action intents)
+// Hybrid intent classifier with two layers:
 //
-// Replaces the old waterfall if/else chain with scored classification.
-// Context (0.95) beats keywords (0.6) beats semantics (0.5).
+// PRIMARY: Language Engine (WordClassifier → SentenceAnalyzer → MeaningResolver)
+//   - Classifies words by grammatical category, analyzes sentence structure,
+//     resolves meaning to WalletIntent. Confidence ≥ 0.7 wins.
+//
+// FALLBACK: Pattern Matcher (7 signal sources)
+//   1. Keyword matching (PatternMatcher — existing keyword lists)
+//   2. Entity presence (address → send, txid → transaction detail)
+//   3. Conversation context (flow state, what was last discussed)
+//   4. Reference resolution (memory-resolved entities boost matching intent)
+//   5. Semantic verb mapping (synonyms, sentence structure)
+//   6. Social/meta detection (thanks, complaints, emoji)
+//   7. Negation detection (reduces confidence of action intents)
+//
+// Language Engine PRIMARY (≥0.7), PatternMatcher FALLBACK.
+// Context (0.95) beats Language (0.7+) beats keywords (0.6).
 //
 // Platform: iOS 17.0+
 // Framework: Foundation
 
 import Foundation
+
+// MARK: - PunctuationContext
+
+struct PunctuationContext {
+    let isQuestion: Bool
+    let isExclamation: Bool
+    let isEllipsis: Bool
+    let isHesitant: Bool
+    let hasComma: Bool
+    let isPurePunctuation: Bool
+    let sentimentModifier: Double // -0.3 to +0.3
+
+    static func analyze(_ text: String) -> PunctuationContext {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        let lower = trimmed.lowercased()
+
+        let isQuestion = trimmed.hasSuffix("?")
+        let isExclamation = trimmed.hasSuffix("!")
+        let isEllipsis = trimmed.hasSuffix("...") || trimmed.hasSuffix("..") || trimmed.contains("\u{2026}")
+        let isHesitant = lower.hasPrefix("hmm") || lower.hasPrefix("um ") || lower.hasPrefix("uh ") || lower.hasPrefix("well ")
+        let hasComma = trimmed.contains(",")
+        let isPure = !trimmed.isEmpty && trimmed.allSatisfy { "?!.,\u{2026}  ".contains($0) }
+
+        var modifier: Double = 0
+        if isQuestion { modifier += 0.1 }
+        if isExclamation { modifier += 0.15 }
+        if isEllipsis { modifier -= 0.2 }
+        if isHesitant { modifier -= 0.15 }
+
+        return PunctuationContext(
+            isQuestion: isQuestion, isExclamation: isExclamation,
+            isEllipsis: isEllipsis, isHesitant: isHesitant,
+            hasComma: hasComma, isPurePunctuation: isPure,
+            sentimentModifier: modifier
+        )
+    }
+}
 
 // MARK: - IntentParser (SmartIntentClassifier)
 
@@ -32,6 +75,11 @@ final class IntentParser {
     private let addressValidator: AddressValidator
     private let currencyParser: CurrencyParser
 
+    // Language Engine (V18)
+    private let wordClassifier: WordClassifier
+    private let sentenceAnalyzer: SentenceAnalyzer
+    private let meaningResolver: MeaningResolver
+
     // MARK: - Initialization
 
     init() {
@@ -39,6 +87,9 @@ final class IntentParser {
         self.entityExtractor = EntityExtractor()
         self.addressValidator = AddressValidator()
         self.currencyParser = CurrencyParser()
+        self.wordClassifier = WordClassifier()
+        self.sentenceAnalyzer = SentenceAnalyzer()
+        self.meaningResolver = MeaningResolver()
     }
 
     init(patternMatcher: PatternMatcher, entityExtractor: EntityExtractor, addressValidator: AddressValidator) {
@@ -46,6 +97,9 @@ final class IntentParser {
         self.entityExtractor = entityExtractor
         self.addressValidator = addressValidator
         self.currencyParser = CurrencyParser()
+        self.wordClassifier = WordClassifier()
+        self.sentenceAnalyzer = SentenceAnalyzer()
+        self.meaningResolver = MeaningResolver()
     }
 
     // MARK: - Legacy API (backward compatible)
@@ -125,7 +179,9 @@ final class IntentParser {
 
     // MARK: - Smart Classification API (with memory)
 
-    /// Classifies user input using all 7 signal sources plus conversation memory.
+    /// Classifies user input using Language Engine (primary) + PatternMatcher (fallback).
+    /// Language confidence ≥ 0.7 wins. Below 0.7, PatternMatcher is checked.
+    /// Context signals (flow state) always override both at 0.95.
     @MainActor
     func classify(_ input: String, memory: ConversationMemory, references: [ResolvedEntity] = []) -> ClassificationResult {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -135,13 +191,133 @@ final class IntentParser {
 
         let normalized = trimmed.lowercased()
         let entities = entityExtractor.extract(from: trimmed)
+
+        // SIGNAL 8: Punctuation intelligence (check early)
+        let punctuation = PunctuationContext.analyze(input)
+
+        // Pure punctuation (e.g. "...") → unknown with low confidence
+        if punctuation.isPurePunctuation {
+            return ClassificationResult(
+                intent: .unknown(rawText: input),
+                confidence: 0.1,
+                needsClarification: true,
+                alternatives: []
+            )
+        }
+
+        // PRIORITY 0: Context signals (flow state) — highest priority (0.95)
+        let contextResults = contextScores(normalized, entities: entities, memory: memory)
+        if let topContext = contextResults.max(by: { $0.confidence < $1.confidence }),
+           topContext.confidence >= 0.9 {
+            let resolved = resolveIntentDetails(topContext.intent, input: trimmed, normalized: normalized)
+            return ClassificationResult(
+                intent: resolved,
+                confidence: topContext.confidence,
+                needsClarification: false,
+                alternatives: []
+            )
+        }
+
+        // PRIORITY 1: Entity-based detection (address, txid, fiat)
+        // These are high-signal: a Bitcoin address in the input almost certainly means send
+        if let entityResult = entityBasedClassification(entities, input: trimmed, normalized: normalized) {
+            return entityResult
+        }
+
+        // PRIORITY 2: Language Engine (PRIMARY)
+        let classifiedWords = wordClassifier.classify(trimmed)
+        let meaning = sentenceAnalyzer.analyze(classifiedWords)
+        let languageResult = meaningResolver.resolve(meaning, memory: memory)
+
+        // PRIORITY 3: PatternMatcher (FALLBACK)
+        let patternResult = patternMatcherClassification(normalized, entities: entities,
+                                                          memory: memory, references: references,
+                                                          input: trimmed)
+
+        // Decision: Language ≥ 0.7 wins. Otherwise, use best of both.
+        var bestResult: ClassificationResult
+
+        if languageResult.confidence >= 0.7 {
+            bestResult = languageResult
+        } else if patternResult.confidence > languageResult.confidence {
+            bestResult = patternResult
+        } else {
+            bestResult = languageResult
+        }
+
+        // Apply punctuation adjustments
+        var adjustedConfidence = bestResult.confidence
+
+        if punctuation.isQuestion {
+            switch bestResult.intent {
+            case .send, .confirmAction:
+                adjustedConfidence -= 0.2
+            default:
+                break
+            }
+        }
+
+        if punctuation.isEllipsis {
+            adjustedConfidence -= 0.2
+        }
+
+        adjustedConfidence += punctuation.sentimentModifier
+        adjustedConfidence = min(max(adjustedConfidence, 0), 1.0)
+
+        // Resolve the final intent with entity details (enrich send/history/price/bumpFee)
+        let resolvedIntent = resolveIntentDetails(bestResult.intent, input: trimmed, normalized: normalized)
+
+        return ClassificationResult(
+            intent: resolvedIntent,
+            confidence: adjustedConfidence,
+            needsClarification: adjustedConfidence < 0.5,
+            alternatives: bestResult.alternatives
+        )
+    }
+
+    // MARK: - Entity-Based Classification
+
+    /// High-signal entity detection: addresses, txids, fiat amounts.
+    private func entityBasedClassification(_ entities: ParsedEntity, input: String, normalized: String) -> ClassificationResult? {
+        // Address found → send
+        if let addr = entities.address, addressValidator.isValid(addr) {
+            let intent = buildSendIntent(from: input)
+            return ClassificationResult(intent: intent, confidence: SignalWeight.entityPresence,
+                                        needsClarification: false, alternatives: [])
+        }
+
+        // Bare txid
+        if let txid = entityExtractor.extractTxId(from: input) {
+            return ClassificationResult(intent: .transactionDetail(txid: txid),
+                                        confidence: SignalWeight.entityPresence,
+                                        needsClarification: false, alternatives: [])
+        }
+
+        // Fiat conversion
+        if let fiat = currencyParser.parseFiatAmount(from: input) {
+            return ClassificationResult(
+                intent: .convertAmount(amount: fiat.amount, fromCurrency: fiat.currencyCode),
+                confidence: SignalWeight.entityPresence,
+                needsClarification: false, alternatives: [])
+        }
+
+        return nil
+    }
+
+    // MARK: - PatternMatcher Classification (Fallback)
+
+    /// Runs the original 7-signal classification pipeline.
+    @MainActor
+    private func patternMatcherClassification(_ normalized: String, entities: ParsedEntity,
+                                               memory: ConversationMemory, references: [ResolvedEntity],
+                                               input: String) -> ClassificationResult {
         var allScores: [IntentScore] = []
 
         // SIGNAL 1: Keyword matching
         allScores += patternMatcher.scoredMatch(normalized)
 
         // SIGNAL 2: Entity presence
-        allScores += entityPresenceScores(entities, input: trimmed)
+        allScores += entityPresenceScores(entities, input: input)
 
         // SIGNAL 3: Conversation context
         allScores += contextScores(normalized, entities: entities, memory: memory)
@@ -158,25 +334,6 @@ final class IntentParser {
         // SIGNAL 7: Negation detection
         allScores = applyNegationPenalty(normalized, scores: allScores)
 
-        // Fiat conversion detection
-        if let fiat = currencyParser.parseFiatAmount(from: trimmed) {
-            allScores.append(IntentScore(
-                intent: .convertAmount(amount: fiat.amount, fromCurrency: fiat.currencyCode),
-                confidence: SignalWeight.entityPresence,
-                source: "entity_fiat"
-            ))
-        }
-
-        // Bare txid
-        if let txid = entityExtractor.extractTxId(from: trimmed) {
-            allScores.append(IntentScore(
-                intent: .transactionDetail(txid: txid),
-                confidence: SignalWeight.entityPresence,
-                source: "entity_txid"
-            ))
-        }
-
-        // Merge and rank
         let merged = mergeScores(allScores)
 
         guard let best = merged.first else {
@@ -188,11 +345,8 @@ final class IntentParser {
             )
         }
 
-        // Resolve the final intent with entity details
-        let resolvedIntent = resolveIntentDetails(best.intent, input: trimmed, normalized: normalized)
-
         return ClassificationResult(
-            intent: resolvedIntent,
+            intent: best.intent,
             confidence: best.confidence,
             needsClarification: best.confidence < 0.5,
             alternatives: Array(merged.prefix(3))

@@ -130,6 +130,8 @@ final class ChatViewModel: ObservableObject {
     private let referenceResolver: ReferenceResolver
     private let multiIntentHandler: MultiIntentHandler
     private let personalityEngine: PersonalityEngine
+    private let knowledgeEngine: BitcoinKnowledgeEngine
+    private let patternMatcher: PatternMatcher
     let memory: ConversationMemory
 
     // MARK: - Conversation Persistence
@@ -145,6 +147,7 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - Wallet State (injected by parent)
 
+    weak var walletState: WalletState?
     var walletBalance: Decimal = 0
     var fiatBalance: Decimal = 0
     var pendingBalance: Decimal = 0
@@ -176,6 +179,8 @@ final class ChatViewModel: ObservableObject {
         self.referenceResolver = ReferenceResolver()
         self.multiIntentHandler = MultiIntentHandler()
         self.personalityEngine = PersonalityEngine()
+        self.knowledgeEngine = BitcoinKnowledgeEngine()
+        self.patternMatcher = PatternMatcher()
         self.memory = ConversationMemory()
         addGreeting()
     }
@@ -187,6 +192,8 @@ final class ChatViewModel: ObservableObject {
         self.referenceResolver = ReferenceResolver()
         self.multiIntentHandler = MultiIntentHandler()
         self.personalityEngine = PersonalityEngine()
+        self.knowledgeEngine = BitcoinKnowledgeEngine()
+        self.patternMatcher = PatternMatcher()
         self.memory = ConversationMemory()
         addGreeting()
     }
@@ -237,18 +244,87 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    /// Processes a single intent part through the V16 smart pipeline.
+    /// Processes a single intent part through the V17 smart pipeline.
     private func processSmartPart(_ text: String, originalText: String, references: [ResolvedEntity]) async {
-        // Step 3: Scored classification with memory
+        // Step 3a: Extract entities early (needed by knowledge + classification)
+        let entities = EntityExtractor().extract(from: text)
+
+        // Step 3b: Check Bitcoin knowledge questions BEFORE classification
+        if let knowledgeResponse = knowledgeEngine.answer(text) {
+            memory.recordUserMessage(originalText, intent: .unknown(rawText: text), entities: entities)
+            let adapted = personalityEngine.adapt(knowledgeResponse, memory: memory)
+            try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
+            appendResponses([.text(adapted)])
+            isTyping = false
+            memory.recordAIResponse(adapted, shownData: nil)
+            return
+        }
+
+        // Step 3c: Check emotion/social signals
+        let emotion = patternMatcher.detectEmotion(text)
+        if emotion.emotion != .neutral && emotion.confidence >= 0.7 {
+            // Check if this is PURELY emotional (no wallet intent mixed in)
+            let classification = intentParser.classify(text, memory: memory, references: references)
+            if case .unknown = classification.intent {
+                memory.recordUserMessage(originalText, intent: .greeting, entities: entities)
+                let emotionKey: String
+                switch emotion.emotion {
+                case .gratitude: emotionKey = "gratitude"
+                case .frustration: emotionKey = "frustration"
+                case .confusion: emotionKey = "confusion"
+                case .humor: emotionKey = "humor"
+                case .sadness: emotionKey = "sadness"
+                case .excitement: emotionKey = "gratitude" // excitement uses affirmative tone
+                case .affirmation: emotionKey = "gratitude"
+                default: emotionKey = "gratitude"
+                }
+                let emotionText = ResponseTemplates.emotionResponse(for: emotionKey, context: nil)
+                let adapted = personalityEngine.adapt(emotionText, memory: memory)
+                try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
+                appendResponses([.text(adapted)])
+                isTyping = false
+                memory.recordAIResponse(adapted, shownData: nil)
+                return
+            }
+        }
+
+        // Step 3d: Check for pure punctuation (ellipsis, hesitation)
+        let punctuation = PunctuationContext.analyze(text)
+        if punctuation.isPurePunctuation {
+            memory.recordUserMessage(originalText, intent: .unknown(rawText: text), entities: entities)
+            let response: String
+            if text.contains("?") {
+                response = ResponseTemplates.helpResponse()
+            } else {
+                response = ResponseTemplates.emotionResponse(for: punctuation.isEllipsis ? "ellipsis" : "hesitant", context: nil)
+            }
+            try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
+            appendResponses([.text(response)])
+            isTyping = false
+            memory.recordAIResponse(response, shownData: nil)
+            return
+        }
+
+        // Step 4: Scored classification with memory
         let classification = intentParser.classify(text, memory: memory, references: references)
         let intent = classification.intent
 
-        // Step 4: Extract entities and record in memory
-        let entities = EntityExtractor().extract(from: text)
+        // Step 4b: Handle question-about-action (e.g., "send?" → informational, not command)
+        if punctuation.isQuestion, case .send = intent, classification.confidence < 0.7 {
+            memory.recordUserMessage(originalText, intent: intent, entities: entities)
+            let questionResponse = ResponseTemplates.questionAboutAction("send")
+            try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
+            appendResponses([.text(questionResponse)])
+            isTyping = false
+            memory.recordAIResponse(questionResponse, shownData: nil)
+            return
+        }
+
+        // Step 5: Record in memory
         memory.recordUserMessage(originalText, intent: intent, entities: entities)
         memory.currentFlowState = conversationState
 
-        // Step 5: Smart flow processing
+        // Step 6: Smart flow processing
         let flowAction = conversationFlow.processSmartIntent(intent, memory: memory)
 
         let effectiveIntent: WalletIntent
@@ -358,40 +434,141 @@ final class ChatViewModel: ObservableObject {
 
         let _ = conversationFlow.processIntent(.confirmAction)
 
-        // Step 1: Signing
-        try? await Task.sleep(nanoseconds: 600_000_000)
-        processing.completeCurrentStep()
+        guard let pending = conversationFlow.pendingTransaction else {
+            processing.failCurrentStep(error: L10n.Error.transactionFailed)
+            conversationFlow.markError(L10n.Error.transactionFailed)
+            conversationState = .error(L10n.Error.transactionFailed)
+            await dismissProcessingCard()
+            let failText = ResponseTemplates.sendFailed(reason: L10n.Error.transactionFailed)
+            messages.append(.ai(failText))
+            conversationManager?.persistMessage(role: "assistant", content: failText)
+            return
+        }
 
-        // Step 2: Broadcasting
-        try? await Task.sleep(nanoseconds: 400_000_000)
+        guard let walletState = walletState,
+              let hdWallet = walletState.hdWallet else {
+            processing.failCurrentStep(error: "Wallet not available")
+            conversationFlow.markError("Wallet not available")
+            conversationState = .error("Wallet not available")
+            await dismissProcessingCard()
+            let failText = ResponseTemplates.sendFailed(reason: "Wallet not available. Please restart the app.")
+            messages.append(.ai(failText))
+            conversationManager?.persistMessage(role: "assistant", content: failText)
+            return
+        }
 
-        if let pending = conversationFlow.pendingTransaction {
-            processing.completeCurrentStep()
+        do {
+            // Step 1: Build transaction
+            let amountSats = NSDecimalNumber(
+                decimal: pending.amount * Constants.satoshisPerBTC
+            ).uint64Value
 
-            // Step 3: Confirming
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            processing.completeCurrentStep() // sets isComplete
+            // Convert UTXOModel → UTXO (TransactionBuilder type)
+            let spendableModels = walletState.utxoStore.spendableUTXOs()
+            let utxos: [UTXO] = try spendableModels.compactMap { model in
+                guard let path = model.derivationPath else { return nil }
+                let scriptPubKey = try ScriptBuilder.scriptPubKey(for: model.address)
+                guard let scriptType = ScriptType.from(address: model.address) else { return nil }
+                return UTXO(
+                    txid: model.txid,
+                    vout: UInt32(model.vout),
+                    amount: model.value,
+                    amountSats: UInt64(model.valueSats),
+                    scriptPubKey: scriptPubKey,
+                    scriptType: scriptType,
+                    address: model.address,
+                    confirmations: model.confirmations,
+                    derivationPath: path
+                )
+            }
 
+            let changeAddress = try hdWallet.nextChangeAddress(
+                type: walletState.preferredAddressType
+            )
+
+            let unsignedTx = try TransactionBuilder.build(
+                utxos: utxos,
+                toAddress: pending.toAddress,
+                amount: amountSats,
+                feeRate: pending.feeRate,
+                changeAddress: changeAddress
+            )
+
+            processing.completeCurrentStep() // Step 1 done: "Building"
+
+            // Step 2: Sign transaction
+            var privateKeys: [String: Data] = [:]
+            for input in unsignedTx.inputs {
+                guard let path = input.utxo.derivationPath else {
+                    throw TransactionError.signingFailed
+                }
+                privateKeys[path] = try hdWallet.privateKey(path: path)
+            }
+
+            let signedTx = try TransactionSigner.sign(
+                transaction: unsignedTx,
+                privateKeys: privateKeys
+            )
+
+            // Zero private key data after signing
+            for key in privateKeys.keys {
+                let count = privateKeys[key]?.count ?? 0
+                privateKeys[key]?.resetBytes(in: 0..<count)
+            }
+            privateKeys.removeAll()
+
+            processing.completeCurrentStep() // Step 2 done: "Signing"
+
+            // Step 3: Broadcast
+            let api = BlockbookAPI()
+            let broadcastResult = try await api.sendTransaction(hex: signedTx.rawHex)
+            let txid = broadcastResult.result
+
+            processing.completeCurrentStep() // Step 3 done: "Broadcasting"
+
+            // Success — mark flow completed
             conversationFlow.markCompleted()
             conversationState = .completed
 
+            // Mark consumed UTXOs as spent for immediate UI update
+            for input in unsignedTx.inputs {
+                walletState.utxoStore.markAsSpent(
+                    txid: input.utxo.txid,
+                    vout: Int(input.utxo.vout)
+                )
+            }
+
             await dismissProcessingCard()
 
-            let successText = ResponseTemplates.sendSuccess(txid: "pending_broadcast")
+            // Show success with real txid
+            let successText = ResponseTemplates.sendSuccess(txid: txid)
             messages.append(.ai(successText))
             conversationManager?.persistMessage(role: "assistant", content: successText)
-            let successCard = ChatMessage.aiCard(.successCard(txid: "pending_broadcast", amount: pending.amount, toAddress: pending.toAddress))
+            let successCard = ChatMessage.aiCard(.successCard(
+                txid: txid,
+                amount: pending.amount,
+                toAddress: pending.toAddress
+            ))
             messages.append(successCard)
             conversationManager?.persistMessage(role: "assistant", content: successCard.content)
-        } else {
-            processing.failCurrentStep(error: L10n.Error.transactionFailed)
 
-            conversationFlow.markError(L10n.Error.transactionFailed)
-            conversationState = .error(L10n.Error.transactionFailed)
+            // Record in memory
+            var shownData = ShownData()
+            shownData.sentTransaction = (txid: txid, amount: pending.amount, address: pending.toAddress, fee: Decimal(signedTx.fee) / Constants.satoshisPerBTC)
+            memory.recordAIResponse(successText, shownData: shownData)
 
+            // Trigger wallet refresh in background
+            Task { await walletState.refresh() }
+
+        } catch {
+            // Handle any failure in build/sign/broadcast
+            let reason = error.localizedDescription
+            processing.failCurrentStep(error: reason)
+            conversationFlow.markError(reason)
+            conversationState = .error(reason)
             await dismissProcessingCard()
 
-            let failText = ResponseTemplates.sendFailed(reason: L10n.Error.transactionFailed)
+            let failText = ResponseTemplates.sendFailed(reason: reason)
             messages.append(.ai(failText))
             conversationManager?.persistMessage(role: "assistant", content: failText)
         }
@@ -456,6 +633,11 @@ final class ChatViewModel: ObservableObject {
         HapticManager.success()
     }
 
+    func openExplorer(txid: String) {
+        guard let url = URL(string: Constants.blockExplorerURL + txid) else { return }
+        UIApplication.shared.open(url)
+    }
+
     func shareText(_ text: String) {
         let activityVC = UIActivityViewController(activityItems: [text], applicationActivities: nil)
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -482,6 +664,13 @@ final class ChatViewModel: ObservableObject {
         let bip39Matches = words.filter { BIP39Wordlist.english.contains($0) }.count
         let threshold = words.count * 3 / 4 // 75% match threshold
         return bip39Matches >= threshold
+    }
+
+    /// Marks a message as no longer new so its typing animation won't replay on scroll.
+    func markMessageNotNew(_ messageId: UUID) {
+        if let index = messages.firstIndex(where: { $0.id == messageId }) {
+            messages[index].isNew = false
+        }
     }
 
     func clearConversation() {
@@ -519,13 +708,15 @@ final class ChatViewModel: ObservableObject {
             addGreeting()
         } else {
             // Reconstruct ChatMessage structs from persisted messages
+            // isNew: false prevents typing animation on loaded history
             for msg in persisted {
                 if msg.role == "user" {
                     messages.append(ChatMessage(
                         id: msg.id,
                         content: msg.content,
                         isFromUser: true,
-                        timestamp: msg.timestamp
+                        timestamp: msg.timestamp,
+                        isNew: false
                     ))
                 } else {
                     messages.append(ChatMessage(
@@ -533,8 +724,22 @@ final class ChatViewModel: ObservableObject {
                         content: msg.content,
                         isFromUser: false,
                         timestamp: msg.timestamp,
-                        responseType: .text(msg.content)
+                        responseType: .text(msg.content),
+                        isNew: false
                     ))
+                }
+            }
+
+            // Rebuild ConversationMemory from persisted messages
+            // so reference resolution works in loaded conversations
+            let entityExtractor = EntityExtractor()
+            for msg in persisted {
+                if msg.role == "user" {
+                    let entities = entityExtractor.extract(from: msg.content)
+                    let classification = intentParser.classify(msg.content, memory: memory)
+                    memory.recordUserMessage(msg.content, intent: classification.intent, entities: entities)
+                } else {
+                    memory.recordAIResponse(msg.content, shownData: nil)
                 }
             }
         }
@@ -550,7 +755,9 @@ final class ChatViewModel: ObservableObject {
 
     private func addGreeting() {
         let greetingText = ResponseTemplates.timeAwareGreeting()
-        messages.append(.ai(greetingText))
+        var greeting = ChatMessage.ai(greetingText)
+        greeting.isNew = false  // Greeting shows instantly, no typing animation
+        messages.append(greeting)
         // Persist the greeting
         conversationManager?.persistMessage(role: "assistant", content: greetingText)
     }

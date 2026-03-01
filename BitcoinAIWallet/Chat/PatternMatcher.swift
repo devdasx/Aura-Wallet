@@ -725,4 +725,74 @@ final class PatternMatcher {
 
         return scores
     }
+
+    // MARK: - Emotion Detection
+
+    enum Emotion {
+        case gratitude
+        case frustration
+        case confusion
+        case humor
+        case excitement
+        case sadness
+        case affirmation
+        case neutral
+    }
+
+    struct EmotionResult {
+        let emotion: Emotion
+        let confidence: Double
+    }
+
+    func detectEmotion(_ text: String) -> EmotionResult {
+        let lower = text.lowercased()
+
+        // Gratitude
+        let gratitudeWords = ["thanks", "thank you", "thx", "ty", "appreciate", "grateful",
+                              "you're the best", "awesome help"]
+        if gratitudeWords.contains(where: { lower.contains($0) }) {
+            return EmotionResult(emotion: .gratitude, confidence: 0.9)
+        }
+
+        // Frustration
+        let frustrationWords = ["broken", "doesn't work", "not working", "hate this",
+                                "frustrated", "annoyed", "why won't", "stupid",
+                                "wtf", "what the", "come on", "ugh"]
+        if frustrationWords.contains(where: { lower.contains($0) }) {
+            return EmotionResult(emotion: .frustration, confidence: 0.8)
+        }
+
+        // Confusion
+        let confusionWords = ["confused", "don't understand", "what does that mean",
+                              "i don't get it", "huh"]
+        if confusionWords.contains(where: { lower.contains($0) }) {
+            return EmotionResult(emotion: .confusion, confidence: 0.8)
+        }
+
+        // Humor
+        let humorWords = ["lol", "haha", "funny", "hilarious", "rofl", "lmao"]
+        if humorWords.contains(where: { lower.contains($0) }) {
+            return EmotionResult(emotion: .humor, confidence: 0.7)
+        }
+
+        // Sadness/Loss (Bitcoin context)
+        let sadWords = ["lost", "scammed", "stolen", "hacked", "gone", "disappeared"]
+        let bitcoinWords = ["bitcoin", "btc", "wallet", "coin", "crypto", "funds", "money", "sats"]
+        if sadWords.contains(where: { lower.contains($0) }) && bitcoinWords.contains(where: { lower.contains($0) }) {
+            return EmotionResult(emotion: .sadness, confidence: 0.8)
+        }
+
+        // Excitement
+        if lower.hasSuffix("!!") || lower.contains("awesome") || lower.contains("amazing") || lower.contains("let's go") || lower.contains("lets go") {
+            return EmotionResult(emotion: .excitement, confidence: 0.6)
+        }
+
+        // Affirmation
+        let affirmWords = ["great", "perfect", "nice", "cool", "sweet", "good"]
+        if affirmWords.contains(where: { lower == $0 || lower.hasPrefix($0 + " ") || lower.hasPrefix($0 + "!") }) {
+            return EmotionResult(emotion: .affirmation, confidence: 0.6)
+        }
+
+        return EmotionResult(emotion: .neutral, confidence: 1.0)
+    }
 }

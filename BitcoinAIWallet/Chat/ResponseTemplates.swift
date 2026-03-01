@@ -94,6 +94,13 @@ struct ResponseTemplates {
 
     static func balanceResponse(btcAmount: String, fiatAmount: String, pendingAmount: String?, utxoCount: Int) -> String {
         var lines: [String] = []
+        let intro = pick([
+            "Your balance is **\(btcAmount) BTC** (\(fiatAmount)).",
+            "You have **\(btcAmount) BTC** (\(fiatAmount)).",
+            "Current balance: **\(btcAmount) BTC** (\(fiatAmount)).",
+        ])
+        lines.append(intro)
+        lines.append("")
         lines.append("{{amount:\(btcAmount) BTC}}  {{fiat:\(fiatAmount)}}")
         lines.append("")
         lines.append("• \(L10n.Wallet.availableBalance): **\(btcAmount) BTC**")
@@ -147,23 +154,33 @@ struct ResponseTemplates {
     // MARK: - Send
 
     static func sendConfirmation() -> String {
-        L10n.Chat.sendConfirmPrompt
+        pick([
+            "Here's your transaction summary. Please review and confirm.",
+            "Review the details below and confirm when ready.",
+            "Transaction ready. Take a look and confirm to send.",
+        ])
     }
 
     static func sendSuccess(txid: String) -> String {
         var lines: [String] = []
-        lines.append("{{green:\(L10n.Chat.sendSuccess)}}")
+        let intro = pick([
+            "Transaction broadcast successfully!",
+            "Your Bitcoin is on its way!",
+            "Sent! Transaction broadcast to the network.",
+        ])
+        lines.append("{{green:\(intro)}}")
         lines.append("")
         lines.append("• \(L10n.History.txid): {{address:\(txid)}}")
         return lines.joined(separator: "\n")
     }
 
     static func sendFailed(reason: String) -> String {
-        var lines: [String] = []
-        lines.append("{{red:\(L10n.Chat.sendFailed)}}")
-        lines.append("")
-        lines.append(reason)
-        return lines.joined(separator: "\n")
+        let intro = pick([
+            "Transaction failed: \(reason)",
+            "Couldn't complete the send. \(reason)",
+            "The transaction didn't go through. \(reason)",
+        ])
+        return "{{red:\(intro)}}"
     }
 
     static func insufficientFunds(available: String) -> String {
@@ -182,7 +199,12 @@ struct ResponseTemplates {
 
     static func receiveAddress(address: String, type: String) -> String {
         var lines: [String] = []
-        lines.append(L10n.Chat.receivePrompt)
+        let intro = pick([
+            "Here's your \(type) receive address:",
+            "Send Bitcoin to this \(type) address:",
+            "Your \(type) address for receiving:",
+        ])
+        lines.append(intro)
         lines.append("")
         lines.append("{{address:\(address)}}")
         lines.append("")
@@ -198,7 +220,11 @@ struct ResponseTemplates {
 
     static func historyResponse(count: Int) -> String {
         if count == 0 { return noTransactions() }
-        return "\(L10n.Chat.historyResponse) (**\(count)**)"
+        return pick([
+            "Here are your last \(count) transactions.",
+            "Showing \(count) recent transactions.",
+            "Your recent activity — \(count) transactions.",
+        ])
     }
 
     static func noTransactions() -> String {
@@ -209,7 +235,12 @@ struct ResponseTemplates {
 
     static func feeEstimateResponse(slow: String, medium: String, fast: String) -> String {
         var lines: [String] = []
-        lines.append(L10n.Chat.feeEstimate)
+        let intro = pick([
+            "Current network fee estimates:",
+            "Here are the latest fee rates:",
+            "Network fees right now:",
+        ])
+        lines.append(intro)
         lines.append("")
         lines.append("• \(L10n.Fee.fast): **\(fast)**")
         lines.append("• \(L10n.Fee.medium): **\(medium)**")
@@ -221,9 +252,14 @@ struct ResponseTemplates {
 
     static func priceResponse(formattedPrice: String, currency: String) -> String {
         var lines: [String] = []
-        lines.append("{{amount:\(formattedPrice) \(currency)}}")
+        let intro = pick([
+            "Bitcoin is trading at **\(formattedPrice) \(currency)**.",
+            "Current BTC price: **\(formattedPrice) \(currency)**.",
+            "BTC/\(currency): **\(formattedPrice)**.",
+        ])
+        lines.append(intro)
         lines.append("")
-        lines.append(localizedFormat("chat.price_response_template", formattedPrice, currency))
+        lines.append("{{amount:\(formattedPrice) \(currency)}}")
         return lines.joined(separator: "\n")
     }
 
@@ -307,7 +343,11 @@ struct ResponseTemplates {
     // MARK: - Smart Fallback
 
     static func smartFallback() -> String {
-        localizedString("chat.smart_fallback")
+        pick([
+            "I'm not sure what you mean. Try **balance**, **send**, **receive**, **fees**, or **price**.",
+            "Hmm, I didn't catch that. Could you rephrase?",
+            "Not sure I follow. Say **help** to see what I can do.",
+        ])
     }
 
     /// Intelligent fallback using classification alternatives.
@@ -392,7 +432,12 @@ struct ResponseTemplates {
 
     static func helpResponse() -> String {
         var lines: [String] = []
-        lines.append("**\(localizedString("chat.help_title"))**")
+        let intro = pick([
+            "Here's what I can help with:",
+            "I can do a lot! Here's a quick guide:",
+            "Need a hand? Here's what I can do:",
+        ])
+        lines.append("**\(intro)**")
         lines.append("")
         lines.append("• \(L10n.QuickAction.send): **\"send 0.005 to bc1q...\"**")
         lines.append("• \(L10n.QuickAction.receive): **\"receive\"** or **\"my address\"**")
@@ -505,5 +550,73 @@ struct ResponseTemplates {
 
     static func openingSettings() -> String {
         "{{green:\(L10n.Settings.title)...}}"
+    }
+
+    // MARK: - Emotion Responses
+
+    static func emotionResponse(for emotion: String, context: String?) -> String {
+        switch emotion {
+        case "gratitude":
+            return pick([
+                "Happy to help! Need anything else?",
+                "Anytime! What's next?",
+                "You're welcome! Let me know if you need anything.",
+            ])
+        case "frustration":
+            return pick([
+                "I'm sorry you're having trouble. Let me help — what exactly isn't working?",
+                "Sorry about that. Can you tell me more about what went wrong?",
+                "I understand the frustration. Let me try to help fix this.",
+            ])
+        case "confusion":
+            return pick([
+                "No worries! Ask me anything — I'm here to help.",
+                "Let me try to explain that differently. What part is unclear?",
+                "No problem! Feel free to ask, and I'll do my best to clarify.",
+            ])
+        case "humor":
+            return "What else can I help you with?"
+        case "sadness":
+            return "I'm sorry to hear that. If you believe your wallet has been compromised, the most important step is to **move your remaining funds to a new wallet immediately**. Would you like help with that?"
+        case "ellipsis":
+            return pick([
+                "Take your time! Let me know how I can help.",
+                "No rush — I'm here when you're ready.",
+                "Whenever you're ready, just let me know.",
+            ])
+        case "hesitant":
+            return pick([
+                "What are you thinking about? I can help with sending, checking your balance, fees, and more.",
+                "Take your time! Need help with anything?",
+                "I'm here whenever you need me. Just ask!",
+            ])
+        default:
+            return pick([
+                "How can I help you?",
+                "What would you like to do?",
+                "What can I do for you?",
+            ])
+        }
+    }
+
+    // MARK: - Punctuation-Aware Responses
+
+    static func questionAboutAction(_ action: String) -> String {
+        switch action {
+        case "send":
+            return pick([
+                "Want to send Bitcoin? Just tell me the amount and address. For example: **send 0.005 to bc1q...**",
+                "To send Bitcoin, I'll need an amount and destination address. Ready to start?",
+                "I can help you send Bitcoin! Just provide the amount and address.",
+            ])
+        case "receive":
+            return pick([
+                "Want to receive Bitcoin? I'll show you your address and QR code. Just say **receive**.",
+                "To receive Bitcoin, share your address with the sender. Say **receive** to see it.",
+                "I can show you your receive address. Just say the word!",
+            ])
+        default:
+            return "Would you like me to help with that? Just let me know!"
+        }
     }
 }
