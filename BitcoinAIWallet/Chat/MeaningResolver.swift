@@ -41,7 +41,12 @@ final class MeaningResolver {
                 return ClassificationResult(intent: .help, confidence: 0.7, needsClarification: false, alternatives: [IntentScore(intent: .send(amount: nil, unit: nil, address: nil, feeLevel: nil), confidence: 0.4, source: "question")], meaning: meaning)
             }
             let e = entityExtractor.extract(from: input)
-            return ClassificationResult(intent: .send(amount: e.amount, unit: e.unit, address: e.address, feeLevel: e.feeLevel), confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+            // Safety net: if EntityExtractor missed a bare number, use the modifier from SentenceAnalyzer
+            var amount = e.amount
+            if amount == nil, let mod = meaning.modifier, case .specific(let n) = mod {
+                amount = n
+            }
+            return ClassificationResult(intent: .send(amount: amount, unit: e.unit, address: e.address, feeLevel: e.feeLevel), confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
 
         case .receive:
             return ClassificationResult(intent: .receive, confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)

@@ -119,7 +119,14 @@ final class SmartConversationFlow: ObservableObject {
             }
 
         case (.awaitingAmount(let address), .unknown(let rawText)):
-            if let parsedAmount = Decimal(string: rawText.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            // Try EntityExtractor first (handles "0.0001 btc", "50000 sats", "$50")
+            let extractor = EntityExtractor()
+            let entities = extractor.extract(from: rawText)
+            if let extractedAmount = entities.amount {
+                let btcAmount = normalizeAmount(extractedAmount, unit: entities.unit)
+                newState = resolveAmount(btcAmount, address: address)
+            } else if let parsedAmount = Decimal(string: rawText.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                // Fallback: bare number parsing
                 newState = resolveAmount(parsedAmount, address: address)
             } else {
                 newState = activeFlow

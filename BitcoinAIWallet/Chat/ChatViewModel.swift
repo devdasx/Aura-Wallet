@@ -292,12 +292,13 @@ final class ChatViewModel: ObservableObject {
         try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
 
         // Step 7: Build response based on flow action
-        let context = buildContext()
+        var context = buildContext()
         var responses: [ResponseType]
 
         switch action {
         case .advanceFlow(let newState):
             conversationState = newState
+            context = buildContext()  // Rebuild with new state so response builder sees correct flow state
             responses = responseBuilder.buildResponse(for: result, context: context, memory: memory, flow: smartFlow)
 
         case .handleNormally(let intent):

@@ -67,10 +67,25 @@ final class DynamicResponseBuilder {
                 }
             }
 
-            // Ellipsis: "..."
+            // Ellipsis: "..." — but NEVER when in an active send flow
             if meaning.type == .empty && meaning.confidence <= 0.5 {
-                return [.text(ResponseVariations.ellipsis())]
+                if !flow.isInSendFlow(flow.activeFlow) {
+                    return [.text(ResponseVariations.ellipsis())]
+                }
+                // In a send flow with weak meaning — fall through to re-prompt
             }
+        }
+
+        // ── Flow-state-aware re-prompt ──
+        // If we're in a send flow and the intent is unknown, re-prompt
+        // for the expected data instead of generating a generic fallback.
+        if flow.isInSendFlow(flow.activeFlow), case .unknown = result.intent {
+            return responseGenerator.generateResponse(
+                for: .send(amount: nil, unit: nil, address: nil, feeLevel: nil),
+                context: context,
+                memory: memory,
+                classification: result
+            )
         }
 
         // ── Standard intent-based responses ──
