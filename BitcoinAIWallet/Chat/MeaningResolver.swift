@@ -57,7 +57,8 @@ final class MeaningResolver {
         case .showPrice:
             return ClassificationResult(intent: .price(currency: nil), confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
         case .showHistory:
-            return ClassificationResult(intent: .history(count: nil), confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+            let count = entityExtractor.extractCount(from: input)
+            return ClassificationResult(intent: .history(count: count), confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
         case .showAddress:
             return ClassificationResult(intent: .receive, confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
         case .showUTXO:
@@ -90,7 +91,9 @@ final class MeaningResolver {
         case .generate:
             return ClassificationResult(intent: .newAddress, confidence: 0.85, needsClarification: false, alternatives: [], meaning: meaning)
         case .convert:
-            return ClassificationResult(intent: .price(currency: nil), confidence: 0.7, needsClarification: false, alternatives: [], meaning: meaning)
+            // Try to extract currency from input: "convert to EUR", "convert that to euros"
+            let detectedCurrency = extractCurrencyFromInput(input)
+            return ClassificationResult(intent: .price(currency: detectedCurrency), confidence: 0.7, needsClarification: false, alternatives: [], meaning: meaning)
         case .compare:
             return ClassificationResult(intent: .balance, confidence: 0.8, needsClarification: false, alternatives: [], meaning: meaning)
         case .select(let idx):
@@ -153,5 +156,24 @@ final class MeaningResolver {
         default:
             return ClassificationResult(intent: .help, confidence: 0.4, needsClarification: true, alternatives: [], meaning: meaning)
         }
+    }
+
+    // MARK: - Currency Extraction
+
+    /// Extracts a fiat currency code from input text.
+    private func extractCurrencyFromInput(_ input: String) -> String? {
+        let lower = input.lowercased()
+        let currencyMap: [(String, String)] = [
+            ("dollars", "USD"), ("dollar", "USD"), ("bucks", "USD"), ("usd", "USD"),
+            ("euros", "EUR"), ("euro", "EUR"), ("eur", "EUR"),
+            ("euros", "EUR"),
+            ("pounds", "GBP"), ("pound", "GBP"), ("gbp", "GBP"), ("quid", "GBP"),
+            ("yen", "JPY"), ("jpy", "JPY"),
+            ("cad", "CAD"), ("aud", "AUD"), ("chf", "CHF"),
+        ]
+        for (keyword, code) in currencyMap {
+            if lower.contains(keyword) { return code }
+        }
+        return nil
     }
 }

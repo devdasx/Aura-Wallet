@@ -24,7 +24,10 @@ final class PatternMatcher {
     // MARK: - Typo Tolerance
 
     /// Maximum Levenshtein distance for fuzzy keyword matching.
-    private let maxTypoDistance = 1
+    /// Uses 1 for short words (<=5 chars), 2 for longer words.
+    private func maxDistance(for keyword: String) -> Int {
+        keyword.count <= 5 ? 1 : 2
+    }
 
     /// Computes Levenshtein edit distance between two strings.
     private func levenshteinDistance(_ a: String, _ b: String) -> Int {
@@ -49,7 +52,7 @@ final class PatternMatcher {
         return dp[m][n]
     }
 
-    /// Checks if a word approximately matches any keyword (within maxTypoDistance).
+    /// Checks if a word approximately matches any keyword (within dynamic max distance).
     private func fuzzyContains(_ text: String, keywords: [String]) -> Bool {
         let words = text.split(separator: " ").map { String($0) }
         for word in words {
@@ -59,7 +62,7 @@ final class PatternMatcher {
                     if word == keyword { return true }
                     continue
                 }
-                if levenshteinDistance(word, keyword) <= maxTypoDistance {
+                if levenshteinDistance(word, keyword) <= maxDistance(for: keyword) {
                     return true
                 }
             }
@@ -106,6 +109,10 @@ final class PatternMatcher {
         // English
         "hello", "hi", "hey", "good morning", "good afternoon", "good evening",
         "howdy", "sup", "what's up", "whats up", "yo",
+        "heya", "g'day", "greetings",
+        "what's good", "whats good", "what's happening", "whats happening",
+        "how's it going", "hows it going", "how ya doing", "how you doing",
+        "hey hey", "yo yo",
         // Arabic
         "مرحبا", "سلام", "اهلا", "أهلا", "صباح الخير", "مساء الخير",
         // Spanish
@@ -196,9 +203,14 @@ final class PatternMatcher {
         // English
         "balance", "how much", "my btc", "my bitcoin",
         "funds", "what do i have", "how many bitcoin",
-        "how many sats", "how much bitcoin", "how much btc",
+        "how many sats", "how many satoshi", "how many satoshis",
+        "how much bitcoin", "how much btc",
         "wallet balance", "total balance", "available balance",
         "what's my balance", "whats my balance",
+        "what do i owe", "how much i got", "show me the money",
+        "stack check", "wallet check", "what's in my wallet",
+        "am i rich", "am i broke", "remaining balance",
+        "available funds", "how much can i spend",
         // Arabic
         "رصيدي", "رصيد", "كم عندي", "كم لدي", "ما رصيدي",
         "كم بتكوين", "رصيد المحفظة",
@@ -231,7 +243,10 @@ final class PatternMatcher {
         "price", "btc price", "bitcoin price", "how much is bitcoin",
         "what is bitcoin worth", "current price", "market price",
         "how much is btc", "btc value", "bitcoin value",
-        "price of bitcoin", "price of btc",
+        "price of bitcoin", "price of btc", "price check",
+        "bitcoin trading", "btc to usd", "btc to eur",
+        "btc usd", "bitcoin usd", "bitcoin to usd", "bitcoin to eur",
+        "bitcoin up or down", "is bitcoin up", "is bitcoin down",
         // Arabic
         "سعر", "سعر البتكوين", "كم سعر البتكوين", "سعر بتكوين",
         // Spanish
@@ -241,8 +256,20 @@ final class PatternMatcher {
         "📈", "📉",
     ]
 
+    private let pricePatterns: [NSRegularExpression] = {
+        let patterns = [
+            #"\bhow\s+much\s+is\s+[\d.]+\s*(?:btc|bitcoin|sats?|satoshis?)\b"#,
+            #"\bwhat(?:'s|\s+is)\s+[\d.]+\s*(?:btc|bitcoin|sats?|satoshis?)\s+(?:in|worth)\b"#,
+            #"\bconvert\s+[\d.]+\s*(?:btc|bitcoin|sats?|satoshis?)\b"#,
+            #"\b[\d.]+\s*(?:btc|bitcoin)\s+(?:in|to)\s+(?:usd|eur|gbp|dollars?|euros?|pounds?)\b"#,
+            #"\bhow\s+much\s+is\s+[\d.]+\s*(?:sats?|satoshis?)\s+worth\b"#,
+        ]
+        return patterns.compactMap { try? NSRegularExpression(pattern: $0, options: [.caseInsensitive]) }
+    }()
+
     func isPriceIntent(_ text: String) -> Bool {
         if containsAny(text, keywords: priceKeywords) { return true }
+        if matchesAny(text, patterns: pricePatterns) { return true }
         if text == "price" || text == "precio" || text == "سعر" { return true }
         if !text.contains(" ") { return fuzzyContains(text, keywords: ["price", "precio"]) }
         return false
@@ -309,6 +336,8 @@ final class PatternMatcher {
         "show transactions", "list transactions", "my transactions",
         "transaction history", "show history", "view history",
         "show activity", "recent activity",
+        "transfers", "my transfers", "show transfers",
+        "last transaction", "recent transfers",
         // Arabic
         "سجل", "المعاملات", "سجل المعاملات", "النشاط",
         "المعاملات الأخيرة",
@@ -330,7 +359,7 @@ final class PatternMatcher {
     func isHistoryIntent(_ text: String) -> Bool {
         if containsAny(text, keywords: historyKeywords) { return true }
         if matchesAny(text, patterns: historyPatterns) { return true }
-        if !text.contains(" ") { return fuzzyContains(text, keywords: ["history", "historial"]) }
+        if !text.contains(" ") { return fuzzyContains(text, keywords: ["history", "historial", "transaction", "transactions"]) }
         return false
     }
 
@@ -483,7 +512,7 @@ final class PatternMatcher {
         "yes", "confirm", "ok", "okay", "go", "send it", "do it",
         "approve", "yeah", "yep", "sure", "go ahead", "proceed",
         "affirmative", "absolutely", "y", "ya", "yea",
-        "that's right", "correct", "right", "looks good",
+        "that's right", "correct", "right", "looks good", "i'm sure", "im sure",
         "go for it", "let's do it", "let's go", "confirmed",
         // Arabic
         "نعم", "أكد", "موافق", "تمام", "أوافق", "يلا",
@@ -577,6 +606,7 @@ final class PatternMatcher {
         if text == "help" || text == "?" || text == "مساعدة" || text == "ayuda" { return true }
         if containsAny(text, keywords: helpKeywords) { return true }
         if matchesAny(text, patterns: helpPatterns) { return true }
+        if !text.contains(" ") { return fuzzyContains(text, keywords: ["help", "ayuda"]) }
         return false
     }
 
@@ -586,6 +616,8 @@ final class PatternMatcher {
     private let socialPositiveKeywords: [String] = [
         "thanks", "thank you", "thx", "ty", "awesome", "great", "cool", "nice",
         "perfect", "wonderful", "good job", "well done", "appreciate",
+        "brilliant", "love it", "nice one", "sweet",
+        "merci", "danke", "grazie",
         "شكرا", "شكرًا", "ممتاز", "رائع",
         "gracias", "genial", "perfecto", "excelente",
     ]

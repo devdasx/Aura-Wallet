@@ -43,9 +43,41 @@ final class SmartConversationFlow: ObservableObject {
     func processMessage(_ intent: WalletIntent, meaning: SentenceMeaning?, memory: ConversationMemory) -> FlowAction {
         // Evaluation/question about last thing/emotional → let response builder handle
         if let m = meaning {
-            if m.type == .evaluation { return .respondToMeaning(m) }
+            // In awaitingFeeLevel, don't intercept evaluations — let fee parsing handle it
+            // e.g., "normal is fine" should resolve to medium fee, not trigger evaluation
+            let isAwaitingFee: Bool
+            if case .awaitingFeeLevel = activeFlow { isAwaitingFee = true } else { isAwaitingFee = false }
+            if m.type == .evaluation && !isAwaitingFee { return .respondToMeaning(m) }
             if m.type == .question && m.action == .explain && m.object == .lastMentioned { return .respondToMeaning(m) }
             if m.type == .emotional { return .respondToMeaning(m) }
+
+            // Safety question in-flow: "Is this safe?" → answer without pausing
+            if isInSendFlow(activeFlow) && m.type == .question && m.object == .wallet {
+                return .respondToMeaning(m)
+            }
+
+            // Affordability question in-flow: "Can I afford this?" → answer without pausing
+            if isInSendFlow(activeFlow) && m.action == .compare {
+                return .respondToMeaning(m)
+            }
+
+            // "Wait" / "Hold on" during send flow → hesitation, NOT cancel.
+            // Keep the flow active, just acknowledge.
+            if isInSendFlow(activeFlow) && m.type == .command && m.action == .cancel {
+                // Check if original word was "wait" / "hold" (not explicit "cancel" / "no")
+                if !m.isNegated {
+                    // Soft pause — return hesitation response without resetting flow
+                    return .respondToMeaning(SentenceMeaning(
+                        type: .emotional, action: nil, subject: nil, object: nil,
+                        modifier: nil, emotion: .confusion, isNegated: false, confidence: 0.8
+                    ))
+                }
+            }
+        }
+
+        // "?" during send flow → re-prompt, not pause for help
+        if isInSendFlow(activeFlow), case .help = intent {
+            return .advanceFlow(activeFlow) // Stay in current state, re-prompt
         }
 
         // In send flow + unrelated intent → PAUSE
@@ -161,6 +193,13 @@ final class SmartConversationFlow: ObservableObject {
             let fee = estimateFee(feeLevel: level)
             newState = .awaitingConfirmation(amount: amount, address: address, fee: fee)
             buildPendingTransaction(amount: amount, address: address, fee: fee, feeLevel: level)
+
+        // Confirm/accept in awaitingFeeLevel → default to medium fee
+        // Handles "normal is fine", "ok", "sure", "that's fine" when picking fee
+        case (.awaitingFeeLevel(let amount, let address), .confirmAction):
+            let fee = estimateFee(feeLevel: .medium)
+            newState = .awaitingConfirmation(amount: amount, address: address, fee: fee)
+            buildPendingTransaction(amount: amount, address: address, fee: fee, feeLevel: .medium)
 
         // Confirm
         case (.awaitingConfirmation, .confirmAction):

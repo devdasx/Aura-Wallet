@@ -48,9 +48,14 @@ final class DynamicResponseBuilder {
                 return handleComparative(meaning, memory: memory, flow: flow, context: context)
             }
 
-            // Emotions: "Thanks!" "Ugh"
+            // Emotions: "Thanks!" "Ugh" "Hmm"
             if meaning.type == .emotional, let emotion = meaning.emotion {
                 return handleEmotion(emotion, memory: memory)
+            }
+
+            // Greeting emotion without specific emotion (e.g., "hi there" mid-conversation)
+            if meaning.type == .emotional && meaning.emotion == nil {
+                return [.text(ResponseVariations.gladToHear())]
             }
 
             // Affordability: "Can I afford it?"

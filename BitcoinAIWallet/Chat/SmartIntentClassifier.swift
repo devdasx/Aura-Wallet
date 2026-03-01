@@ -46,6 +46,12 @@ final class SmartIntentClassifier {
 
         // ── Decision ──
 
+        // LAYER 4 (early): Follow-up context detection runs BEFORE language engine
+        // to catch "And EUR?", "What about pounds?", "In sats?", "Is that a lot?" etc.
+        if let followUp = detectFollowUp(normalizedInput, meaning: meaning, memory: memory) {
+            return followUp
+        }
+
         // Language engine confident? Use it.
         if languageResult.confidence >= 0.7 { return languageResult }
 
@@ -68,11 +74,6 @@ final class SmartIntentClassifier {
         // Use whichever is more confident
         if languageResult.confidence > 0.3 { return languageResult }
 
-        // LAYER 4: Follow-up detection (e.g., "And EUR" after price query)
-        if let followUp = detectFollowUpCurrency(normalizedInput, meaning: meaning, memory: memory) {
-            return followUp
-        }
-
         return ClassificationResult(
             intent: .unknown(rawText: normalizedInput),
             confidence: 0.2,
@@ -82,19 +83,18 @@ final class SmartIntentClassifier {
         )
     }
 
-    // MARK: - Follow-Up Currency Detection
+    // MARK: - Follow-Up Detection
 
-    /// Detects follow-up currency queries like "And EUR", "EUR?", "in GBP" after a price intent.
+    /// Detects follow-up queries after price/balance: currencies, units, evaluative reactions.
     @MainActor
-    private func detectFollowUpCurrency(_ input: String, meaning: SentenceMeaning, memory: ConversationMemory) -> ClassificationResult? {
+    private func detectFollowUp(_ input: String, meaning: SentenceMeaning, memory: ConversationMemory) -> ClassificationResult? {
         guard let lastIntent = memory.lastUserIntent else { return nil }
-        guard case .price = lastIntent else { return nil }
 
         let currencyMap: [String: String] = [
             "usd": "USD", "dollar": "USD", "dollars": "USD", "bucks": "USD",
             "eur": "EUR", "euro": "EUR", "euros": "EUR",
             "gbp": "GBP", "pound": "GBP", "pounds": "GBP", "quid": "GBP",
-            "jpy": "JPY", "yen": "JPY",
+            "jpy": "JPY", "yen": "JPY", "japanese yen": "JPY",
             "cad": "CAD", "aud": "AUD", "chf": "CHF",
             "cny": "CNY", "yuan": "CNY",
             "krw": "KRW", "inr": "INR", "brl": "BRL",
@@ -103,7 +103,7 @@ final class SmartIntentClassifier {
 
         // Strip conjunction/preposition prefixes: "and EUR", "in GBP", "also EUR"
         var cleaned = input.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        for prefix in ["and ", "in ", "also ", "plus ", "what about ", "how about "] {
+        for prefix in ["and ", "in ", "also ", "plus ", "what about ", "how about ", "what about in ", "and in "] {
             if cleaned.hasPrefix(prefix) {
                 cleaned = String(cleaned.dropFirst(prefix.count))
                 break
@@ -111,15 +111,82 @@ final class SmartIntentClassifier {
         }
         cleaned = cleaned.trimmingCharacters(in: .punctuationCharacters).trimmingCharacters(in: .whitespaces)
 
-        if let currency = currencyMap[cleaned] {
-            return ClassificationResult(
-                intent: .price(currency: currency),
-                confidence: 0.85,
-                needsClarification: false,
-                alternatives: [],
-                meaning: meaning
-            )
+        // After price: follow-up currency
+        if case .price = lastIntent {
+            if let currency = currencyMap[cleaned] {
+                return ClassificationResult(
+                    intent: .price(currency: currency),
+                    confidence: 0.85,
+                    needsClarification: false,
+                    alternatives: [],
+                    meaning: meaning
+                )
+            }
         }
+
+        // After balance: "How much is that in dollars?" / "And in sats?" / "And in euros?"
+        if case .balance = lastIntent {
+            // Sats/satoshis conversion
+            let satKeywords = ["sats", "sat", "satoshi", "satoshis"]
+            if satKeywords.contains(cleaned) {
+                return ClassificationResult(
+                    intent: .balance,
+                    confidence: 0.85,
+                    needsClarification: false,
+                    alternatives: [],
+                    meaning: meaning
+                )
+            }
+            // Fiat conversion
+            if let currency = currencyMap[cleaned] {
+                return ClassificationResult(
+                    intent: .price(currency: currency),
+                    confidence: 0.85,
+                    needsClarification: false,
+                    alternatives: [],
+                    meaning: meaning
+                )
+            }
+            // "How much is that in dollars?" — detect currency words in full input
+            let lower = input.lowercased()
+            for (keyword, code) in currencyMap {
+                if lower.contains(keyword) {
+                    return ClassificationResult(
+                        intent: .price(currency: code),
+                        confidence: 0.8,
+                        needsClarification: false,
+                        alternatives: [],
+                        meaning: meaning
+                    )
+                }
+            }
+        }
+
+        // After balance: "Is that a lot?" / "Is that good?" → contextual balance question
+        if case .balance = lastIntent {
+            let lower = input.lowercased()
+            let balanceFollowUps = ["is that a lot", "is that good", "is that enough",
+                                    "is that much", "is that little", "is that ok",
+                                    "can i send some", "can i send"]
+            if balanceFollowUps.contains(where: { lower.contains($0) }) {
+                // Return a meaning-driven response about the balance
+                let evalMeaning = SentenceMeaning(
+                    type: .question, action: .explain, subject: .user,
+                    object: .balance, modifier: nil, emotion: nil,
+                    isNegated: false, confidence: 0.85
+                )
+                return ClassificationResult(
+                    intent: .balance,
+                    confidence: 0.85,
+                    needsClarification: false,
+                    alternatives: [],
+                    meaning: evalMeaning
+                )
+            }
+        }
+
+        // After price: "Convert 0.1 BTC" handled by language engine already.
+        // After price: "Is it going up?" / "That's expensive" - let language engine handle.
 
         return nil
     }

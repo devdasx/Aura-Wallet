@@ -154,12 +154,27 @@ final class WordClassifier {
             ("go back", "go_back"), ("come on", "come_on"),
             ("right now", "right_now"), ("last time", "last_time"),
             ("do it again", "do_again"), ("same thing", "same_thing"),
+            ("go ahead", "go_ahead"), ("start over", "start_over"),
+            ("i didn't mean", "didn't_mean"), ("i didnt mean", "didn't_mean"),
+            ("that's not what", "not_what_asked"), ("thats not what", "not_what_asked"),
+            ("what about", "what_about"), ("how about", "how_about"),
+            ("try again", "try_again"), ("copy that", "copy_that"),
             ("good enough", "good_enough"), ("sounds good", "sounds_good"),
             ("the second", "ordinal_2"), ("the third", "ordinal_3"),
             ("the first", "ordinal_1"), ("the last", "ordinal_last"),
             // Greetings
             ("good morning", "good_morning"), ("good afternoon", "good_afternoon"),
             ("good evening", "good_evening"),
+            ("what's good", "what's_good"), ("whats good", "what's_good"),
+            ("what's happening", "what's_happening"), ("whats happening", "what's_happening"),
+            ("how's it going", "how's_it_going"), ("hows it going", "how's_it_going"),
+            ("how ya doing", "how_ya_doing"), ("how you doing", "how_ya_doing"),
+            // Social phrases
+            ("oh no", "oh_no"), ("not bad", "not_bad"),
+            ("thank you", "thank_you"), ("nice one", "nice_one"),
+            ("love it", "love_it"), ("that sucks", "that_sucks"),
+            ("to the moon", "to_the_moon"), ("am i rich", "am_i_rich"),
+            ("lemme see", "lemme_see"), ("gimme my", "gimme_my"),
             // Arabic
             ("كم عندي", "how_much_ar"), ("نفس العنوان", "same_address_ar"),
             ("نفس المبلغ", "same_amount_ar"),
@@ -241,6 +256,14 @@ final class WordClassifier {
         }
 
         // ── General Verbs ──
+        // ── Common Misspellings ──
+        d["hlep"] = .generalVerb(.help)
+        d["recieve"] = .walletVerb(.receive)
+        d["recive"] = .walletVerb(.receive)
+        d["ballance"] = .bitcoinNoun(.balance)
+        d["adress"] = .bitcoinNoun(.address)
+        d["trasaction"] = .bitcoinNoun(.transaction)
+
         for (w, v) in [("want", GeneralAction.want), ("wanna", .want), ("need", .need), ("like", .like),
                         ("think", .think), ("know", .know), ("understand", .understand),
                         ("go", .go), ("see", .see), ("look", .look), ("get", .get), ("make", .make),
@@ -248,7 +271,9 @@ final class WordClassifier {
                         ("tell", .tell), ("explain", .explain), ("help", .help), ("teach", .teach),
                         ("repeat", .repeat), ("afford", .afford), ("wait", .wait),
                         ("stop", .stop), ("start", .start), ("undo", .undo), ("redo", .redo),
-                        ("go_back", .undo), ("changed_mind", .undo), ("never_mind", .undo)] as [(String, GeneralAction)] {
+                        ("go_back", .undo), ("changed_mind", .undo), ("never_mind", .undo),
+                        ("start_over", .undo), ("didn't_mean", .undo), ("not_what_asked", .undo),
+                        ("try_again", .repeat)] as [(String, GeneralAction)] {
             d[w] = .generalVerb(v)
         }
 
@@ -308,7 +333,7 @@ final class WordClassifier {
 
         // ── Affirmation ──
         for w in ["yes", "yeah", "yep", "yea", "ya", "ok", "okay", "sure",
-                   "absolutely", "definitely", "exactly", "agreed", "proceed", "y",
+                   "absolutely", "definitely", "exactly", "agreed", "proceed", "y", "go_ahead",
                    "نعم", "أكيد", "تمام", "موافق", "يلا",
                    "sí", "si", "dale", "claro", "correcto"] {
             d[w] = .affirmation
@@ -318,12 +343,16 @@ final class WordClassifier {
         for w in ["hi", "hello", "hey", "yo", "sup", "howdy",
                    "good_morning", "good_afternoon", "good_evening",
                    "morning", "afternoon", "evening",
+                   "heya", "g'day", "greetings",
+                   "what's_good", "what's_happening", "how's_it_going",
+                   "how_ya_doing",
                    "مرحبا", "أهلا", "السلام", "hola", "buenos_días"] {
             d[w] = .greeting
         }
 
         // ── Bitcoin Nouns ──
         d["balance"] = .bitcoinNoun(.balance); d["رصيد"] = .bitcoinNoun(.balance); d["رصيدي"] = .bitcoinNoun(.balance); d["saldo"] = .bitcoinNoun(.balance)
+        d["coins"] = .bitcoinNoun(.balance); d["funds"] = .bitcoinNoun(.balance); d["money"] = .bitcoinNoun(.balance)
         d["fee"] = .bitcoinNoun(.fee); d["fees"] = .bitcoinNoun(.fees); d["رسوم"] = .bitcoinNoun(.fees)
         d["address"] = .bitcoinNoun(.address); d["qr"] = .bitcoinNoun(.address); d["عنوان"] = .bitcoinNoun(.address); d["dirección"] = .bitcoinNoun(.address)
         d["transaction"] = .bitcoinNoun(.transaction); d["tx"] = .bitcoinNoun(.transaction); d["transactions"] = .bitcoinNoun(.transactions)
@@ -336,17 +365,65 @@ final class WordClassifier {
         d["lightning"] = .bitcoinNoun(.lightning); d["seed"] = .bitcoinNoun(.seed); d["key"] = .bitcoinNoun(.key)
         d["confirmation"] = .bitcoinNoun(.confirmation); d["confirmations"] = .bitcoinNoun(.confirmations)
         d["history"] = .bitcoinNoun(.history); d["سجل"] = .bitcoinNoun(.history); d["historial"] = .bitcoinNoun(.history)
+        d["transfers"] = .bitcoinNoun(.transactions); d["activity"] = .bitcoinNoun(.history)
+        d["recent"] = .temporal(.recently); d["trading"] = .bitcoinNoun(.price)
+        d["value"] = .bitcoinNoun(.price); d["worth"] = .bitcoinNoun(.price)
+        d["congested"] = .bitcoinNoun(.network); d["status"] = .bitcoinNoun(.network)
+        d["settings"] = .unknown("settings_intent")
+        d["cheapest"] = .comparative(.cheaper); d["fastest"] = .comparative(.faster)
+        d["slowest"] = .comparative(.slower)
+
+        // ── Word Numbers (common spoken amounts) ──
+        let wordNumbers: [(String, Decimal)] = [
+            ("one", 1), ("two", 2), ("three", 3), ("four", 4), ("five", 5),
+            ("six", 6), ("seven", 7), ("eight", 8), ("nine", 9), ("ten", 10),
+            ("eleven", 11), ("twelve", 12), ("thirteen", 13), ("fourteen", 14),
+            ("fifteen", 15), ("sixteen", 16), ("seventeen", 17), ("eighteen", 18),
+            ("nineteen", 19), ("twenty", 20), ("thirty", 30), ("forty", 40),
+            ("fifty", 50), ("hundred", 100), ("thousand", 1000),
+        ]
+        for (w, n) in wordNumbers { d[w] = .number(n) }
 
         // ── Bitcoin Units ──
         for w in ["btc", "bitcoin", "بتكوين", "sat", "sats", "satoshi", "satoshis", "ساتوشي"] { d[w] = .bitcoinUnit }
 
         // ── Emotions ──
-        for w in ["thanks", "thank", "thx", "ty", "appreciate", "grateful", "شكرا", "gracias"] { d[w] = .emotion(.gratitude) }
-        for w in ["ugh", "annoyed", "frustrated", "broken", "stupid", "wtf", "useless"] { d[w] = .emotion(.frustration) }
-        for w in ["confused", "lost", "huh", "idk"] { d[w] = .emotion(.confusion) }
-        for w in ["awesome", "amazing", "cool", "wow", "sweet", "yay"] { d[w] = .emotion(.excitement) }
+        for w in ["thanks", "thank", "thx", "ty", "appreciate", "grateful",
+                   "شكرا", "gracias", "merci", "danke", "grazie"] { d[w] = .emotion(.gratitude) }
+        for w in ["ugh", "annoyed", "frustrated", "frustrating", "broken", "stupid", "wtf", "useless",
+                   "damn", "sucks", "terrible"] { d[w] = .emotion(.frustration) }
+        for w in ["confused", "lost", "huh", "idk", "meh", "hmm", "hm", "umm", "um", "🤔"] { d[w] = .emotion(.confusion) }
+        for w in ["awesome", "amazing", "cool", "wow", "sweet", "yay",
+                   "brilliant", "love", "fantastic", "incredible"] { d[w] = .emotion(.excitement) }
         for w in ["lol", "haha", "hehe", "funny", "😂", "🤣"] { d[w] = .emotion(.humor) }
-        for w in ["worried", "scared", "nervous", "concerned", "afraid"] { d[w] = .emotion(.concern) }
+        for w in ["worried", "scared", "nervous", "concerned", "afraid",
+                   "oops", "yikes", "oh_no"] { d[w] = .emotion(.concern) }
+
+        // ── Social phrase tokens ──
+        // ── Currency words (for follow-up detection) ──
+        for w in ["dollars", "dollar", "bucks", "usd"] { d[w] = .unknown("currency:USD") }
+        for w in ["euros", "euro", "eur"] { d[w] = .unknown("currency:EUR") }
+        for w in ["pounds", "pound", "gbp", "quid"] { d[w] = .unknown("currency:GBP") }
+        for w in ["yen", "jpy"] { d[w] = .unknown("currency:JPY") }
+
+        // ── Common words ──
+        d["lot"] = .unknown("lot")
+        d["sorry"] = .emotion(.concern)
+        d["amount"] = .bitcoinNoun(.balance)
+        d["copy"] = .affirmation
+        d["copy_that"] = .affirmation
+        d["what_about"] = .questionWord(.what)
+        d["how_about"] = .questionWord(.what)
+
+        d["thank_you"] = .emotion(.gratitude)
+        d["not_bad"] = .evaluative(.good)
+        d["nice_one"] = .emotion(.excitement)
+        d["love_it"] = .emotion(.excitement)
+        d["that_sucks"] = .emotion(.frustration)
+        d["to_the_moon"] = .emotion(.excitement)
+        d["am_i_rich"] = .bitcoinNoun(.balance)
+        d["lemme_see"] = .generalVerb(.see)
+        d["gimme_my"] = .walletVerb(.show)
 
         return d
     }()

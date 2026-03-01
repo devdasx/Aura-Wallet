@@ -95,19 +95,28 @@ final class SentenceAnalyzer {
         }
 
         // ── RULE 3: Pure affirmation/negation ──
-        if classified.allSatisfy({ isAffOrNeg($0.type) || isNoise($0.type) }) {
+        if classified.allSatisfy({ isAffOrNeg($0.type) || isNoise($0.type) || isFluff($0.type) }) {
             if hasNegation { return SentenceMeaning(type: .command, action: .cancel, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: true, confidence: 0.85) }
             return SentenceMeaning(type: .command, action: .confirm, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: false, confidence: 0.85)
         }
 
         // ── RULE 4: Bare question word ──
         let hasBitcoinUnit = classified.contains { if case .bitcoinUnit = $0.type { return true }; return false }
-        if isQuestion && walletVerb == nil && generalVerb == nil && questionWord != nil && !hasNumber && !hasAddress {
+        // Treat howMuch/howMany as implicit questions even without "?"
+        let isImplicitQuestion = isQuestion || questionWord == .howMuch || questionWord == .howMany
+        if isImplicitQuestion && walletVerb == nil && generalVerb == nil && questionWord != nil && !hasNumber && !hasAddress {
             return analyzeBareQuestion(questionWord!, bitcoinNoun: bitcoinNoun, hasBitcoinUnit: hasBitcoinUnit, memory: memory)
         }
 
-        // ── RULE 5: Comparative alone ──
-        if walletVerb == nil && generalVerb == nil && comparative != nil {
+        // ── RULE 5: Comparative (with or without non-actionable general verb) ──
+        // "faster", "cheaper", "make it faster", "wait make it cheaper" → all comparative-driven
+        // BUT: skip when sentence mentions a bitcoin unit with up/down (price direction query)
+        // e.g., "Is bitcoin up or down?" or "Bitcoin going up?"
+        let comparativeFriendlyVerbs: Set<GeneralAction> = [.make, .go, .get, .want, .need, .wait, .stop, .set]
+        let isPriceDirection = (comparative == .up || comparative == .down) && hasBitcoinUnit && !hasNumber
+        let isBitcoinUnitQuestion = isPriceDirection
+        if walletVerb == nil && comparative != nil && !isBitcoinUnitQuestion &&
+           (generalVerb == nil || comparativeFriendlyVerbs.contains(generalVerb!)) {
             return analyzeComparative(comparative!, memory: memory)
         }
 
@@ -117,8 +126,18 @@ final class SentenceAnalyzer {
         }
 
         // ── RULE 7: Directional ──
-        if directional != nil && walletVerb == nil && generalVerb == nil {
+        // Allow directional even with generalVerb if the verb is tell/see/look/explain
+        // (e.g., "tell me about the first one", "show me the last one")
+        // BUT: skip when there's a number + bitcoinNoun (count query: "last 3 transactions")
+        let directionalFriendlyVerbs: Set<GeneralAction> = [.tell, .see, .look, .explain, .teach]
+        let isCountQuery = hasNumber && bitcoinNoun != nil
+        if directional != nil && walletVerb == nil && !isCountQuery && (generalVerb == nil || directionalFriendlyVerbs.contains(generalVerb!)) {
             return analyzeDirectional(directional!, memory: memory)
+        }
+
+        // ── RULE 7b: "try again" → repeatLast ──
+        if generalVerb == .tryIt && directional == .again {
+            return SentenceMeaning(type: .navigation, action: .repeatLast, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: false, confidence: 0.85)
         }
 
         // ── RULE 8: "Can I afford it?" ──
@@ -131,12 +150,27 @@ final class SentenceAnalyzer {
             return SentenceMeaning(type: .question, action: .explain, subject: nil, object: .wallet, modifier: nil, emotion: nil, isNegated: false, confidence: 0.8)
         }
 
+        // ── RULE 9b: Past-tense query with wallet verb ──
+        // "What did I send recently" / "Did I receive anything today" → history, not send/receive
+        let hasTemporal = classified.compactMap { if case .temporal(let t) = $0.type { return t }; return nil }.first
+        let hasPastIndicator = classified.contains { if case .unknown(let w) = $0.type { return w == "did" || w == "was" || w == "were" }; return false }
+        if let verb = walletVerb, (verb == .send || verb == .receive),
+           (hasPastIndicator || hasTemporal == .recently || hasTemporal == .yesterday || hasTemporal == .today),
+           !hasNumber && !hasAddress {
+            return SentenceMeaning(type: .question, action: .showHistory, subject: .user, object: .history, modifier: nil, emotion: emotion, isNegated: hasNegation, confidence: 0.85)
+        }
+
         // ── RULE 10: Wallet verb present ──
         if let verb = walletVerb {
-            // "show" defers to the noun: "show fees" → .showFees, "show address" → .showAddress
+            // "when will it confirm?" → question about confirmation timing, not .confirmAction
+            if verb == .confirm && (questionWord != nil || isQuestion) {
+                return SentenceMeaning(type: .question, action: .explain, subject: nil, object: .transaction, modifier: nil, emotion: nil, isNegated: false, confidence: 0.8)
+            }
+
+            // "show"/"check" defer to the noun: "show fees" → .showFees, "check price" → .showPrice
             let action: ResolvedAction
-            if verb == .show, let noun = bitcoinNoun {
-                action = defaultAction(for: noun)
+            if (verb == .show || verb == .check) && bitcoinNoun != nil {
+                action = defaultAction(for: bitcoinNoun!)
             } else {
                 action = mapWalletVerb(verb)
             }
@@ -158,14 +192,29 @@ final class SentenceAnalyzer {
 
         // ── RULE 11: General verb + Bitcoin noun ──
         if let gVerb = generalVerb, let noun = bitcoinNoun {
+            // "Change the amount to 0.002" → modify amount, not checkBalance
+            if gVerb == .change && hasNumber {
+                let modifier = resolveModifier(comparative, quantifier)
+                return SentenceMeaning(type: .command, action: .modify(what: "amount"), subject: .user, object: .amount, modifier: modifier, emotion: emotion, isNegated: hasNegation, confidence: 0.85)
+            }
             let action = mapGeneralVerbWithNoun(gVerb, noun)
             return SentenceMeaning(type: isQuestion ? .question : .command, action: action, subject: .user, object: mapBitcoinNoun(noun), modifier: nil, emotion: emotion, isNegated: hasNegation, confidence: 0.85)
         }
 
+        // ── RULE 11b: "fresh/new/another address" → generate new address ──
+        let hasNewIndicator = classified.contains { if case .unknown(let w) = $0.type { return ["fresh", "new", "another", "different"].contains(w) }; return false }
+        if hasNewIndicator && bitcoinNoun == .address && walletVerb == nil {
+            return SentenceMeaning(type: .command, action: .generate, subject: .user, object: .address, modifier: nil, emotion: emotion, isNegated: hasNegation, confidence: 0.85)
+        }
+
         // ── RULE 12: Bitcoin noun alone ──
         if let noun = bitcoinNoun, walletVerb == nil {
-            let action = defaultAction(for: noun)
-            return SentenceMeaning(type: isQuestion ? .question : .singleWord, action: action, subject: .user, object: mapBitcoinNoun(noun), modifier: nil, emotion: emotion, isNegated: hasNegation, confidence: 0.8)
+            // When multiple bitcoin nouns exist, pick the most specific one
+            // e.g., "network fees" → .fees (not .network)
+            let allNouns = classified.compactMap { if case .bitcoinNoun(let n) = $0.type { return n }; return nil }
+            let bestNoun = pickMostSpecificNoun(allNouns) ?? noun
+            let action = defaultAction(for: bestNoun)
+            return SentenceMeaning(type: isQuestion ? .question : .singleWord, action: action, subject: .user, object: mapBitcoinNoun(bestNoun), modifier: nil, emotion: emotion, isNegated: hasNegation, confidence: 0.8)
         }
 
         // ── RULE 13: General verb alone ──
@@ -185,17 +234,22 @@ final class SentenceAnalyzer {
         // ── RULE 14b: Bare number + optional unit, no verb (context-aware) ──
         if hasNumber && walletVerb == nil && generalVerb == nil {
             let hasBitcoinUnit = classified.contains { if case .bitcoinUnit = $0.type { return true }; return false }
+            let hasCurrencyWord = classified.contains { if case .unknown(let w) = $0.type { return w.hasPrefix("currency:") }; return false }
             let onlyNumberAndUnit = classified.allSatisfy { w in
                 if case .number = w.type { return true }
                 if case .bitcoinUnit = w.type { return true }
+                if case .unknown(let s) = w.type { return s.hasPrefix("currency:") }
                 return isNoise(w.type)
             }
             if onlyNumberAndUnit {
+                // Carry the numeric value as a modifier so MeaningResolver can extract it
+                let numericValue = classified.compactMap { if case .number(let n) = $0.type { return n }; return nil }.first
+                let mod: ResolvedModifier? = numericValue.map { .specific($0) }
                 if case .awaitingAmount = memory.currentFlowState {
-                    return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .amount, modifier: nil, emotion: nil, isNegated: false, confidence: 0.95)
+                    return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .amount, modifier: mod, emotion: nil, isNegated: false, confidence: 0.95)
                 }
-                if hasBitcoinUnit {
-                    return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .amount, modifier: nil, emotion: nil, isNegated: false, confidence: 0.7)
+                if hasBitcoinUnit || hasCurrencyWord {
+                    return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .amount, modifier: mod, emotion: nil, isNegated: false, confidence: 0.7)
                 }
             }
         }
@@ -323,7 +377,7 @@ final class SentenceAnalyzer {
         case .affirmation: return SentenceMeaning(type: .command, action: .confirm, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: false, confidence: 0.85)
         case .negation: return SentenceMeaning(type: .command, action: .cancel, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: true, confidence: 0.85)
         case .emotion(let e): return SentenceMeaning(type: .emotional, action: nil, subject: nil, object: nil, modifier: nil, emotion: e, isNegated: false, confidence: 0.9)
-        case .comparative(let d): return analyzeComparativeSync(d)
+        case .comparative(let d): return analyzeComparative(d, memory: memory)
         case .directional(let d): return analyzeDirectionalSync(d)
         case .questionWord(let q): return analyzeQuestionWordSync(q)
 
@@ -340,6 +394,16 @@ final class SentenceAnalyzer {
                 return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .address, modifier: nil, emotion: nil, isNegated: false, confidence: 0.95)
             }
             return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .address, modifier: nil, emotion: nil, isNegated: false, confidence: 0.6)
+
+        case .pronoun(let p):
+            // Context-aware pronoun handling
+            switch p {
+            case .same:
+                // "Same" = repeat last action
+                return SentenceMeaning(type: .navigation, action: .repeatLast, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: false, confidence: 0.7)
+            default:
+                return SentenceMeaning(type: .empty, action: nil, subject: nil, object: .lastMentioned, modifier: nil, emotion: nil, isNegated: false, confidence: 0.3)
+            }
 
         case .evaluative(let e): return analyzeEvaluationSync(e)
         case .bitcoinUnit: return SentenceMeaning(type: .question, action: .showPrice, subject: nil, object: .price, modifier: nil, emotion: nil, isNegated: false, confidence: 0.6)
@@ -475,7 +539,46 @@ final class SentenceAnalyzer {
         if case .comparative = t { return true }    // "what's up" (up = comparative)
         return isNoise(t)
     }
-    private func isEmotionOrNoise(_ t: WordType) -> Bool { if case .emotion = t { return true }; return isNoise(t) }
-    private func isAffOrNeg(_ t: WordType) -> Bool { if case .affirmation = t { return true }; if case .negation = t { return true }; return false }
+    private func isEmotionOrNoise(_ t: WordType) -> Bool {
+        if case .emotion = t { return true }
+        if case .unknown = t { return true }   // "you", "so", "much", etc.
+        if case .pronoun = t { return true }   // "it", "that"
+        if case .temporal = t { return true }  // "right_now"
+        return isNoise(t)
+    }
+    private func isAffOrNeg(_ t: WordType) -> Bool {
+        if case .affirmation = t { return true }
+        if case .negation = t { return true }
+        if case .pronoun = t { return true }       // "I'm sure" — pronoun-like words near affirmations
+        if case .unknown(let w) = t {
+            // Treat common filler words as compatible with affirmation/negation
+            let fillers = ["i'm", "im", "i", "me", "do", "am", "is", "it", "please", "just", "really", "actually"]
+            if fillers.contains(w) { return true }
+        }
+        return false
+    }
+    private func isFluff(_ t: WordType) -> Bool {
+        // Pronouns, unknowns that commonly appear alongside affirmation/negation
+        if case .pronoun = t { return true }
+        if case .unknown(let w) = t {
+            let fillers = ["i'm", "im", "i", "me", "do", "am", "is", "it", "please", "just",
+                           "really", "actually", "well", "right", "thing", "so", "then"]
+            return fillers.contains(w)
+        }
+        return false
+    }
     private func isNoise(_ t: WordType) -> Bool { if case .article = t { return true }; if case .preposition = t { return true }; if case .conjunction = t { return true }; return false }
+
+    /// When multiple Bitcoin nouns appear, pick the most actionable one.
+    /// Priority: fee/fees > transaction/transactions/history > balance > price > address > network/mempool/wallet
+    private func pickMostSpecificNoun(_ nouns: [BitcoinConcept]) -> BitcoinConcept? {
+        guard nouns.count > 1 else { return nouns.first }
+        let priority: [BitcoinConcept] = [.fee, .fees, .transaction, .transactions, .history,
+                                           .balance, .price, .address, .utxo, .utxos,
+                                           .network, .mempool, .wallet]
+        for p in priority {
+            if nouns.contains(p) { return p }
+        }
+        return nouns.first
+    }
 }
