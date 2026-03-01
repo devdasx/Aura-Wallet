@@ -313,38 +313,7 @@ final class ResponseGenerator {
         let pending = context.pendingBalance ?? Decimal.zero
         let utxos = context.utxoCount ?? 0
 
-        let textResponse: String
-
-        // Context-aware: balance after a recent send
-        if let mem = memory, let sent = mem.lastSentTx, mem.turnsSinceLastSend() < 4 {
-            textResponse = ResponseTemplates.balanceAfterSend(
-                btcAmount: formatBTC(btc),
-                fiatAmount: formatFiat(fiat),
-                sentAmount: formatBTC(sent.amount),
-                pendingAmount: pending > 0 ? formatBTC(pending) : nil,
-                utxoCount: utxos
-            )
-        }
-        // Context-aware: balance unchanged since last check
-        else if let mem = memory, let lastBal = mem.lastShownBalance, lastBal == btc {
-            textResponse = ResponseTemplates.balanceUnchanged(
-                btcAmount: formatBTC(btc),
-                fiatAmount: formatFiat(fiat),
-                utxoCount: utxos
-            )
-        }
-        // Default balance response
-        else {
-            textResponse = ResponseTemplates.balanceResponse(
-                btcAmount: formatBTC(btc),
-                fiatAmount: formatFiat(fiat),
-                pendingAmount: pending > 0 ? formatBTC(pending) : nil,
-                utxoCount: utxos
-            )
-        }
-
         return [
-            .text(textResponse),
             .balanceCard(btc: btc, fiat: fiat, pending: pending, utxoCount: utxos),
         ]
     }
@@ -424,7 +393,6 @@ final class ResponseGenerator {
         let limit = count ?? 10
         let displayTransactions = Array(transactions.prefix(limit))
         return [
-            .text(ResponseTemplates.historyResponse(count: displayTransactions.count)),
             .historyCard(transactions: displayTransactions),
         ]
     }
@@ -439,13 +407,7 @@ final class ResponseGenerator {
         let mediumItem = buildFeeDisplayItem(level: L10n.Fee.medium, satPerVB: estimates.medium, estimatedMinutes: 20)
         let fastItem = buildFeeDisplayItem(level: L10n.Fee.fast, satPerVB: estimates.fast, estimatedMinutes: 10)
 
-        let textResponse = ResponseTemplates.feeEstimateResponse(
-            slow: "\(formatSatPerVB(estimates.slow)) \(L10n.Fee.satVb) (~\(L10n.Format.estimatedMinutes(60)))",
-            medium: "\(formatSatPerVB(estimates.medium)) \(L10n.Fee.satVb) (~\(L10n.Format.estimatedMinutes(20)))",
-            fast: "\(formatSatPerVB(estimates.fast)) \(L10n.Fee.satVb) (~\(L10n.Format.estimatedMinutes(10)))"
-        )
         return [
-            .text(textResponse),
             .feeCard(slow: slowItem, medium: mediumItem, fast: fastItem),
         ]
     }
@@ -459,7 +421,6 @@ final class ResponseGenerator {
         let curr = currency ?? context.priceCurrency ?? "USD"
         let formatted = formatFiat(price)
         return [
-            .text(ResponseTemplates.priceResponse(formattedPrice: formatted, currency: curr)),
             .priceCard(btcPrice: price, currency: curr, formattedPrice: formatted),
         ]
     }
@@ -538,7 +499,6 @@ final class ResponseGenerator {
             return [.text(ResponseTemplates.nothingToConfirm())]
         }
         return [
-            .text(ResponseTemplates.processingTransaction()),
             .sendConfirmCard(
                 toAddress: pending.toAddress,
                 amount: pending.amount,
