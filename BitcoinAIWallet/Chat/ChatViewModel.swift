@@ -4,13 +4,14 @@
 // Main business logic for the AI chat interface.
 // V18 Language Brain Pipeline: seed check → reference resolution →
 // multi-intent split → knowledge check → smart classification →
-// smart flow → meaning-aware response → personality adaptation →
-// memory update.
+// AI thinking rules → smart flow → meaning-aware response →
+// personality adaptation → memory update.
 //
 // Coordinates V18 systems:
 // SmartIntentClassifier, ConversationMemory, ReferenceResolver,
 // SmartConversationFlow, DynamicResponseBuilder, ResponseGenerator,
-// MultiIntentHandler, PersonalityEngine, BitcoinKnowledgeEngine.
+// MultiIntentHandler, PersonalityEngine, BitcoinKnowledgeEngine,
+// AIThinkingRules.
 //
 // Platform: iOS 17.0+
 // Framework: Foundation, SwiftUI
@@ -135,6 +136,7 @@ final class ChatViewModel: ObservableObject {
     private let personalityEngine: PersonalityEngine
     private let knowledgeEngine: BitcoinKnowledgeEngine
     private let entityExtractor: EntityExtractor
+    private let thinkingRules = AIThinkingRules()
     let memory: ConversationMemory
 
     // MARK: - Conversation Persistence
@@ -268,13 +270,62 @@ final class ChatViewModel: ObservableObject {
         // Step 5: Smart classification (Language Engine primary, PatternMatcher fallback)
         memory.currentFlowState = conversationState  // Set BEFORE classification so SentenceAnalyzer can check flow state
         let result = smartClassifier.classify(text, memory: memory)
-        memory.recordUserMessage(originalText, intent: result.intent, entities: entities)
+
+        // ★ Step 5.5: AI THINKS BEFORE RESPONDING ★
+        let thought = thinkingRules.think(
+            input: text,
+            result: result,
+            memory: memory,
+            flowState: conversationState,
+            context: buildContext()
+        )
+
+        // Effective classification result after thinking rules may correct it
+        let effectiveResult: ClassificationResult
+        switch thought {
+        case .correctedIntent(let intent, let confidence):
+            effectiveResult = ClassificationResult(
+                intent: intent, confidence: confidence,
+                needsClarification: false, alternatives: [],
+                meaning: result.meaning
+            )
+            memory.recordUserMessage(originalText, intent: intent, entities: entities)
+
+        case .directResponse(let responses):
+            memory.recordUserMessage(originalText, intent: result.intent, entities: entities)
+            let adapted = personalityEngine.adaptAll(responses, memory: memory)
+            try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
+            appendResponses(adapted)
+            let txt = adapted.compactMap { if case .text(let t) = $0 { return t }; return nil }.joined(separator: "\n")
+            memory.recordAIResponse(txt, shownData: nil)
+            return
+
+        case .knowledgeAnswer(let answer):
+            memory.recordUserMessage(originalText, intent: .unknown(rawText: text), entities: entities)
+            let adapted = personalityEngine.adapt(answer, memory: memory)
+            try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
+            appendResponses([.text(adapted)])
+            memory.recordAIResponse(adapted, shownData: nil)
+            return
+
+        case .followUp(let intent):
+            effectiveResult = ClassificationResult(
+                intent: intent, confidence: 0.85,
+                needsClarification: false, alternatives: [],
+                meaning: result.meaning
+            )
+            memory.recordUserMessage(originalText, intent: intent, entities: entities)
+
+        case .proceed:
+            effectiveResult = result
+            memory.recordUserMessage(originalText, intent: result.intent, entities: entities)
+        }
 
         // Step 6: Smart flow processing
-        let action = smartFlow.processMessage(result.intent, meaning: result.meaning, memory: memory)
+        let action = smartFlow.processMessage(effectiveResult.intent, meaning: effectiveResult.meaning, memory: memory)
 
         // Show processing card for async intents
-        let effectiveIntent = resolveIntentFromAction(action, result: result)
+        let effectiveIntent = resolveIntentFromAction(action, result: effectiveResult)
         if let processing = processingConfig(for: effectiveIntent) {
             activeProcessingState = processing
             processing.start()
@@ -298,14 +349,14 @@ final class ChatViewModel: ObservableObject {
         case .advanceFlow(let newState):
             conversationState = newState
             context = buildContext()  // Rebuild with new state so response builder sees correct flow state
-            responses = responseBuilder.buildResponse(for: result, context: context, memory: memory, flow: smartFlow)
+            responses = responseBuilder.buildResponse(for: effectiveResult, context: context, memory: memory, flow: smartFlow)
 
         case .handleNormally(let intent):
-            let normalResult = ClassificationResult(intent: intent, confidence: 0.9, needsClarification: false, alternatives: [], meaning: result.meaning)
+            let normalResult = ClassificationResult(intent: intent, confidence: 0.9, needsClarification: false, alternatives: [], meaning: effectiveResult.meaning)
             responses = responseBuilder.buildResponse(for: normalResult, context: context, memory: memory, flow: smartFlow)
 
         case .pauseAndHandle(let intent, let hint):
-            let pauseResult = ClassificationResult(intent: intent, confidence: 0.9, needsClarification: false, alternatives: [], meaning: result.meaning)
+            let pauseResult = ClassificationResult(intent: intent, confidence: 0.9, needsClarification: false, alternatives: [], meaning: effectiveResult.meaning)
             responses = responseBuilder.buildResponse(for: pauseResult, context: context, memory: memory, flow: smartFlow)
             responses.append(.text(hint))
 
@@ -313,7 +364,7 @@ final class ChatViewModel: ObservableObject {
             responses = handleFlowModification(field: field, newValue: newValue, context: context)
 
         case .respondToMeaning(let meaning):
-            let meaningResult = ClassificationResult(intent: result.intent, confidence: result.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+            let meaningResult = ClassificationResult(intent: effectiveResult.intent, confidence: effectiveResult.confidence, needsClarification: false, alternatives: [], meaning: meaning)
             responses = responseBuilder.buildResponse(for: meaningResult, context: context, memory: memory, flow: smartFlow)
         }
 
