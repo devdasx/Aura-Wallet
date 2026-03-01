@@ -227,7 +227,7 @@ final class ConversationFlow: ObservableObject {
         case .balance, .feeEstimate, .price, .history, .help, .about,
              .walletHealth, .networkStatus, .utxoList, .receive,
              .newAddress, .hideBalance, .showBalance, .refreshWallet,
-             .exportHistory, .greeting:
+             .exportHistory, .greeting, .explain:
             return true
         case .convertAmount:
             return true

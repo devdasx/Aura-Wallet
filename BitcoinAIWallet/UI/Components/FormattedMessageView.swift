@@ -20,9 +20,13 @@ struct FormattedMessageView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.xxxs) {
-            ForEach(blocks) { block in
-                blockView(for: block)
+        if blocks.isEmpty {
+            EmptyView()
+        } else {
+            VStack(alignment: .leading, spacing: AppSpacing.xxxs) {
+                ForEach(blocks) { block in
+                    blockView(for: block)
+                }
             }
         }
     }
@@ -48,7 +52,7 @@ struct FormattedMessageView: View {
             BulletPointView(elements: elements)
 
         case .spacer:
-            Spacer()
+            Color.clear
                 .frame(height: AppSpacing.xs)
         }
     }
@@ -61,7 +65,9 @@ struct InlineContentView: View {
     let elements: [InlineElement]
 
     var body: some View {
-        if elements.count == 1, case .textRun(_, let segments) = elements[0] {
+        if elements.isEmpty {
+            EmptyView()
+        } else if elements.count == 1, case .textRun(_, let segments) = elements[0] {
             // Single text run — use concatenated Text for best wrapping
             buildText(from: segments)
         } else {

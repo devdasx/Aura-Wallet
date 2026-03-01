@@ -153,8 +153,21 @@ struct MessageBubbleView: View {
             }
 
         case .errorText:
-            FormattedMessageView(content: message.content)
-                .padding(.vertical, AppSpacing.xs)
+            HStack(alignment: .top, spacing: AppSpacing.sm) {
+                Image(systemName: AppIcons.error)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(AppColors.error)
+                    .padding(.top, 2)
+
+                FormattedMessageView(content: message.content)
+            }
+            .padding(AppSpacing.md)
+            .background(AppColors.error.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: AppCornerRadius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppCornerRadius.medium, style: .continuous)
+                    .stroke(AppColors.error.opacity(0.25), lineWidth: 1)
+            )
         }
     }
 

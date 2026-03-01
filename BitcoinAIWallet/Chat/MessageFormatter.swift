@@ -89,6 +89,11 @@ struct MessageFormatter {
 
     /// Parse a token-embedded string into structured blocks for rendering.
     static func parse(_ input: String) -> [FormattedBlock] {
+        // Empty or whitespace-only input produces no blocks (avoids orphan spacers).
+        guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return []
+        }
+
         let lines = input.components(separatedBy: "\n")
         var blocks: [FormattedBlock] = []
         var blockIndex = 0
@@ -116,13 +121,29 @@ struct MessageFormatter {
                 continue
             }
 
-            // Bullet point: starts with •
-            if trimmed.hasPrefix("• ") || trimmed.hasPrefix("- ") {
+            // Bullet point: starts with • or - followed by a space
+            // Note: "- " prefix is checked with an extra guard to avoid matching
+            // negative numbers like "-0.001 BTC" as bullets.
+            if trimmed.hasPrefix("• ") {
                 let bulletText = String(trimmed.dropFirst(2))
                 let elements = parseInlineElements(bulletText, baseId: "b\(blockIndex)")
                 blocks.append(.bulletPoint(id: "b\(blockIndex)", elements: elements))
                 blockIndex += 1
                 continue
+            }
+            if trimmed.hasPrefix("- ") {
+                let afterDash = trimmed.dropFirst(2)
+                // Only treat as bullet if first char after "- " is NOT a digit or period
+                // (avoids "-0.001 BTC" being parsed as a bullet).
+                let firstChar = afterDash.first
+                let looksLikeNumber = firstChar != nil && (firstChar!.isNumber || firstChar! == ".")
+                if !looksLikeNumber {
+                    let bulletText = String(afterDash)
+                    let elements = parseInlineElements(bulletText, baseId: "b\(blockIndex)")
+                    blocks.append(.bulletPoint(id: "b\(blockIndex)", elements: elements))
+                    blockIndex += 1
+                    continue
+                }
             }
 
             // Regular rich text line
@@ -231,7 +252,7 @@ struct MessageFormatter {
 
         while !remaining.isEmpty {
             // Find next token
-            if let (range, segment, type) = findNextInlineToken(in: remaining) {
+            if let (range, segment, _) = findNextInlineToken(in: remaining) {
                 // Plain text before the token
                 let before = remaining[remaining.startIndex..<range.lowerBound]
                 if !before.isEmpty {

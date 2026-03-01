@@ -103,6 +103,7 @@ final class TipsEngine {
         case .utxoList:         return .send       // viewed UTXOs → "consolidate UTXOs"
         case .transactionDetail: return .history   // tx detail → "export history"
         case .greeting:         return .general    // greeting → general discovery
+        case .explain:          return .education  // explain → education tips
         case .unknown:          return .general    // unknown → help them discover commands
         case .confirmAction,
              .cancelAction:     return .general

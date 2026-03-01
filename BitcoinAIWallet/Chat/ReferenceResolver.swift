@@ -38,12 +38,17 @@ final class ReferenceResolver {
             resolved.append(.amount(amt, unit))
         }
 
+        // Fee level references ("same fee", "use the same fee")
+        if let fee = resolveFeeReference(lower, memory: memory) {
+            resolved.append(.feeLevel(fee))
+        }
+
         // Repeat/again references
         if let intent = resolveRepeatReference(lower, memory: memory) {
             resolved.append(.intent(intent))
         }
 
-        // Ordinal references ("the second one", "first transaction", "#3")
+        // Ordinal / demonstrative references ("the second one", "first transaction", "#3", "that one")
         if let tx = resolveOrdinalReference(lower, memory: memory) {
             resolved.append(.transaction(tx))
         }
@@ -71,6 +76,8 @@ final class ReferenceResolver {
                     let unitStr = unit == .sats || unit == .satoshis ? " sats" : " BTC"
                     enriched += " \(amt)\(unitStr)"
                 }
+            case .feeLevel(let level):
+                enriched += " \(level.rawValue)"
             case .intent:
                 break // Intent resolution is handled separately
             case .transaction(let tx):
@@ -113,6 +120,19 @@ final class ReferenceResolver {
         return nil
     }
 
+    // MARK: - Fee Level Reference
+
+    private func resolveFeeReference(_ lower: String, memory: ConversationMemory) -> FeeLevel? {
+        let triggers = [
+            "same fee", "that fee", "the fee", "previous fee",
+            "last fee", "same priority", "same speed",
+            "نفس الرسوم",
+            "la misma tarifa", "la misma comisión",
+        ]
+        guard triggers.contains(where: { lower.contains($0) }) else { return nil }
+        return memory.lastFeeLevel
+    }
+
     // MARK: - Repeat Reference
 
     private func resolveRepeatReference(_ lower: String, memory: ConversationMemory) -> WalletIntent? {
@@ -138,6 +158,20 @@ final class ReferenceResolver {
             guard idx >= 0, idx < txs.count else { return nil }
             return txs[idx]
         }
+
+        // Demonstrative references: "that one", "this one", "that transaction", "this transaction"
+        // Only resolve when exactly one transaction was shown (unambiguous) to avoid false matches.
+        // Generic "that" / "this" without "one" / "transaction" are NOT matched to prevent
+        // false positives on questions like "what is that?".
+        let demonstrativeTriggers = [
+            "that one", "this one",
+            "that transaction", "this transaction",
+            "that tx", "this tx",
+        ]
+        if demonstrativeTriggers.contains(where: { lower.contains($0) }), txs.count == 1 {
+            return txs.first
+        }
+
         return nil
     }
 

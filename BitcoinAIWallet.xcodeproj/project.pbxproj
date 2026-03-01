@@ -28,6 +28,7 @@
 		26CB244F21ACE1CBF8C9A4D9 /* TipsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C76F618AD87A908004123049 /* TipsEngine.swift */; };
 		2836FA6B47A1DE2756791ED1 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBB649A764DF4AA67735A3C /* NetworkMonitor.swift */; };
 		2967A634744B7EF56F3B1EAF /* RequestBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07EC9BEF751ABE680B202F81 /* RequestBuilder.swift */; };
+		2AAABAD751E5A2083325831A /* CommandsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A1598DC90DCAFC5AAAA1A66 /* CommandsData.swift */; };
 		2B939651F8072E50BA0F4447 /* ScriptBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56E3373975B10B83FEF47D14 /* ScriptBuilder.swift */; };
 		2BE0B12DB5DA20F735D6EC31 /* HeroAmountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 725B8D8497A26E5C07B8722C /* HeroAmountView.swift */; };
 		2C57C3FCD9914D07B6763ADC /* ErrorHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C9C904D2E836F35BC08E470 /* ErrorHandler.swift */; };
@@ -129,6 +130,7 @@
 		D2EDCDD43687C7D53E576DA3 /* TypingAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F258A1A717A08B86E52B3168 /* TypingAnimator.swift */; };
 		D40D67AA258E8A306BDD8A0C /* BitcoinAIWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 468A7343A85DECB9D552BF5A /* BitcoinAIWalletTests.swift */; };
 		D4F1126D1D8D18FFD5900764 /* CoreDataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73DFC47189894184C26CF759 /* CoreDataStack.swift */; };
+		D8C4D873502C0DF78D99DAE2 /* AIThinkingRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = A685B14471255BB0EC2E9675 /* AIThinkingRules.swift */; };
 		DAAC48FC669C8F8C10493017 /* ResponseTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07576A3F1249E2578372CD2C /* ResponseTemplates.swift */; };
 		DE6BEE16762683D276ACCDCE /* AnkrModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD526DC2DB197555C7A1DF85 /* AnkrModels.swift */; };
 		E33C4CBBC20893C34508E448 /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 358023534DF48C5E4E310802 /* HapticManager.swift */; };
@@ -173,6 +175,7 @@
 		19062CB5C443961FDD8642C7 /* SeedPhraseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedPhraseView.swift; sourceTree = "<group>"; };
 		19079C40768890664D42B2CC /* Bech32.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bech32.swift; sourceTree = "<group>"; };
 		197E67845F7693D15D8C587E /* TypingIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypingIndicator.swift; sourceTree = "<group>"; };
+		1A1598DC90DCAFC5AAAA1A66 /* CommandsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandsData.swift; sourceTree = "<group>"; };
 		1AC7A4E21CB5FF3A8576D6FC /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
 		1CE832631A21DFF2E2345E89 /* ConversationRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationRowView.swift; sourceTree = "<group>"; };
 		1D64A1890E213B938ED86A9F /* SeedVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVerificationView.swift; sourceTree = "<group>"; };
@@ -245,6 +248,7 @@
 		9CF73848EEE04C5076DB4314 /* TipsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipsCard.swift; sourceTree = "<group>"; };
 		A0152378DC160249A3345217 /* InlineActionButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineActionButtons.swift; sourceTree = "<group>"; };
 		A3034664B84B776FCA27ED3C /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
+		A685B14471255BB0EC2E9675 /* AIThinkingRules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIThinkingRules.swift; sourceTree = "<group>"; };
 		A9113CB7FC604702A9B26D97 /* AppIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIcons.swift; sourceTree = "<group>"; };
 		AAF6249962A810D1A2393D39 /* MessageFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageFormatter.swift; sourceTree = "<group>"; };
 		AD526DC2DB197555C7A1DF85 /* AnkrModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkrModels.swift; sourceTree = "<group>"; };
@@ -470,6 +474,7 @@
 			isa = PBXGroup;
 			children = (
 				8B710D972CF6CF76563EECFA /* BackupView.swift */,
+				1A1598DC90DCAFC5AAAA1A66 /* CommandsData.swift */,
 				8BB41F35360A71EF05B740B2 /* CommandsReferenceView.swift */,
 				277594922123F2564DC6521E /* NetworkSettingsView.swift */,
 				F46F4D575A8B58079E2E60A2 /* SecuritySettingsView.swift */,
@@ -482,6 +487,7 @@
 			isa = PBXGroup;
 			children = (
 				283D48A77C9DC7BDCDAF939B /* AddressValidator.swift */,
+				A685B14471255BB0EC2E9675 /* AIThinkingRules.swift */,
 				BC2FBF3D9F31E3ED1B86E2E3 /* BitcoinKnowledgeEngine.swift */,
 				C5BDE5DCC2C6C0EEDCEA0840 /* ChatViewModel.swift */,
 				73F0EEACEF5FE4C5B51C9181 /* ConversationFlow.swift */,
@@ -789,6 +795,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BDA0ADFA1C38129FC4512F61 /* AIProcessingIndicator.swift in Sources */,
+				D8C4D873502C0DF78D99DAE2 /* AIThinkingRules.swift in Sources */,
 				C0F887A35C7BF850B6092214 /* APIConfiguration.swift in Sources */,
 				8E600EBC16973FA19571283A /* APIError.swift in Sources */,
 				5CE7211203E32FEDE7E663E1 /* ActionButtonsCard.swift in Sources */,
@@ -821,6 +828,7 @@
 				4916AEB1F4CE2AB5429AFF28 /* ChatInputBar.swift in Sources */,
 				A0934E04C08B2EA65ACABE0F /* ChatView.swift in Sources */,
 				9473E46110B0860BED974211 /* ChatViewModel.swift in Sources */,
+				2AAABAD751E5A2083325831A /* CommandsData.swift in Sources */,
 				7A1C132C3753B2F9EF319606 /* CommandsReferenceView.swift in Sources */,
 				0EA4DDD5CAAC0D686D6D3967 /* Constants.swift in Sources */,
 				CDC89EEEF359CE3AC28A7CDB /* ConversationFlow.swift in Sources */,

@@ -465,6 +465,12 @@ final class IntentParser {
                     confidence: SignalWeight.reference,
                     source: "ref_amount"
                 ))
+            case .feeLevel(let level):
+                scores.append(IntentScore(
+                    intent: .send(amount: nil, unit: nil, address: nil, feeLevel: level),
+                    confidence: SignalWeight.reference,
+                    source: "ref_fee"
+                ))
             case .intent(let intent):
                 scores.append(IntentScore(
                     intent: intent,

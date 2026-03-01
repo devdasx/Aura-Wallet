@@ -109,6 +109,12 @@ enum WalletIntent: Equatable {
     /// User is greeting the assistant.
     case greeting
 
+    // MARK: - Education
+
+    /// User wants an explanation of a Bitcoin-related topic.
+    /// - Parameter topic: The topic to explain (e.g., "bitcoin", "mining", "fees").
+    case explain(topic: String)
+
     // MARK: - Fallback
 
     /// The parser could not determine a specific intent.
@@ -143,6 +149,7 @@ enum WalletIntent: Equatable {
         case (.showBalance, .showBalance): return true
         case (.refreshWallet, .refreshWallet): return true
         case (.greeting, .greeting): return true
+        case let (.explain(l), .explain(r)): return l == r
         case let (.unknown(l), .unknown(r)): return l == r
         default: return false
         }
@@ -353,6 +360,7 @@ enum SignalWeight {
 enum ResolvedEntity {
     case address(String)
     case amount(Decimal, BitcoinUnit)
+    case feeLevel(FeeLevel)
     case intent(WalletIntent)
     case transaction(TransactionDisplayItem)
 }
@@ -408,6 +416,7 @@ extension WalletIntent {
         case .showBalance: return "showing balance"
         case .refreshWallet: return "wallet refresh"
         case .greeting: return "greeting"
+        case .explain: return "explanation"
         case .transactionDetail: return "transaction details"
         case .unknown: return "something"
         }
@@ -438,6 +447,7 @@ extension WalletIntent {
         case .showBalance: return "showBalance"
         case .refreshWallet: return "refreshWallet"
         case .greeting: return "greeting"
+        case .explain: return "explain"
         case .transactionDetail: return "transactionDetail"
         case .unknown: return "unknown"
         }

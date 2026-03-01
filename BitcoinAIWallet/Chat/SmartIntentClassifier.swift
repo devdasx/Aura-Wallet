@@ -212,28 +212,75 @@ final class SmartIntentClassifier {
 
     @MainActor
     private func boostWithReferences(_ refs: [ResolvedEntity], base: ClassificationResult, memory: ConversationMemory, input: String) -> ClassificationResult {
+        // Collect all resolved pieces so we can build a combined send intent
+        // when multiple references are present (e.g., "same address, same amount").
+        var resolvedAddress: String?
+        var resolvedAmount: Decimal?
+        var resolvedUnit: BitcoinUnit?
+        var resolvedFeeLevel: FeeLevel?
+        var resolvedIntent: WalletIntent?
+        var resolvedTransaction: TransactionDisplayItem?
+
         for ref in refs {
             switch ref {
             case .address(let addr):
-                return ClassificationResult(
-                    intent: .send(amount: nil, unit: nil, address: addr, feeLevel: nil),
-                    confidence: 0.85,
-                    needsClarification: false,
-                    alternatives: base.alternatives,
-                    meaning: base.meaning
-                )
+                resolvedAddress = addr
             case .amount(let amt, let unit):
-                return ClassificationResult(
-                    intent: .send(amount: amt, unit: unit, address: nil, feeLevel: nil),
-                    confidence: 0.85,
-                    needsClarification: false,
-                    alternatives: base.alternatives,
-                    meaning: base.meaning
-                )
-            default:
-                break
+                resolvedAmount = amt
+                resolvedUnit = unit
+            case .feeLevel(let level):
+                resolvedFeeLevel = level
+            case .intent(let intent):
+                resolvedIntent = intent
+            case .transaction(let tx):
+                resolvedTransaction = tx
             }
         }
+
+        // Repeat intent takes highest priority ("do it again", "repeat")
+        if let intent = resolvedIntent {
+            return ClassificationResult(
+                intent: intent,
+                confidence: 0.85,
+                needsClarification: false,
+                alternatives: base.alternatives,
+                meaning: base.meaning
+            )
+        }
+
+        // Transaction reference → transaction detail
+        if let tx = resolvedTransaction {
+            return ClassificationResult(
+                intent: .transactionDetail(txid: tx.txid),
+                confidence: 0.85,
+                needsClarification: false,
+                alternatives: base.alternatives,
+                meaning: base.meaning
+            )
+        }
+
+        // Address and/or amount references → send intent with resolved values
+        if resolvedAddress != nil || resolvedAmount != nil {
+            return ClassificationResult(
+                intent: .send(amount: resolvedAmount, unit: resolvedUnit, address: resolvedAddress, feeLevel: resolvedFeeLevel),
+                confidence: 0.85,
+                needsClarification: false,
+                alternatives: base.alternatives,
+                meaning: base.meaning
+            )
+        }
+
+        // Fee level reference alone (mid-flow, the flow state machine will use it)
+        if let feeLevel = resolvedFeeLevel {
+            return ClassificationResult(
+                intent: .send(amount: nil, unit: nil, address: nil, feeLevel: feeLevel),
+                confidence: 0.85,
+                needsClarification: false,
+                alternatives: base.alternatives,
+                meaning: base.meaning
+            )
+        }
+
         return base
     }
 }

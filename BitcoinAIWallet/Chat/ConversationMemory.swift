@@ -15,9 +15,16 @@ import Foundation
 @MainActor
 final class ConversationMemory {
 
+    // MARK: - Constants
+
+    /// Maximum number of conversation turns to retain in memory.
+    /// Prevents unbounded growth during long sessions.
+    /// Only the most recent turns are kept; older turns are dropped.
+    private static let maxTurns = 100
+
     // MARK: - Full Conversation History
 
-    /// All conversation turns in chronological order.
+    /// All conversation turns in chronological order (bounded by `maxTurns`).
     private(set) var turns: [ConversationTurn] = []
 
     // MARK: - Last Mentioned Entities
@@ -120,6 +127,9 @@ final class ConversationMemory {
 
         // Update behavior metrics
         updateBehaviorMetrics(text)
+
+        // Prune old turns to prevent unbounded memory growth
+        pruneIfNeeded()
     }
 
     /// Records an AI response and updates shown data tracking.
@@ -147,6 +157,9 @@ final class ConversationMemory {
                 lastAmount = sent.amount
             }
         }
+
+        // Prune old turns to prevent unbounded memory growth
+        pruneIfNeeded()
     }
 
     /// Returns how many turns ago a condition was true.
@@ -183,6 +196,16 @@ final class ConversationMemory {
     }
 
     // MARK: - Private Helpers
+
+    /// Drops oldest turns when the array exceeds `maxTurns`.
+    /// Entity fields (lastAddress, lastAmount, etc.) are NOT cleared
+    /// because they represent the most recent values, not old ones.
+    private func pruneIfNeeded() {
+        if turns.count > Self.maxTurns {
+            let overflow = turns.count - Self.maxTurns
+            turns.removeFirst(overflow)
+        }
+    }
 
     private func updateBehaviorMetrics(_ text: String) {
         // Track average message length

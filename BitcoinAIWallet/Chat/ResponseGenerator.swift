@@ -245,6 +245,8 @@ final class ResponseGenerator {
             responses = [.text(ResponseTemplates.helpResponse())]
         case .about:
             responses = [.text(ResponseTemplates.aboutResponse())]
+        case .explain(let topic):
+            responses = [.text(ResponseTemplates.explainTopicResponse(topic: topic))]
         case .greeting:
             responses = generateGreetingResponse(memory: memory)
         case .confirmAction:
