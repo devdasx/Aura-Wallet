@@ -524,138 +524,130 @@ final class WalletState: ObservableObject {
         var seenTxids: Set<String> = []
         allWalletAddresses = []
 
-        do {
-            for addressType in addressTypes {
-                discoveryStatus = "Fetching \(addressType.displayName)..."
+        for addressType in addressTypes {
+            discoveryStatus = "Fetching \(addressType.displayName)..."
 
-                // 1. Get the extended public key (xpub/ypub/zpub) for this type
-                let extKey: String
-                do {
-                    extKey = try wallet.extendedPublicKeyForType(addressType)
-                } catch {
-                    AppLogger.error("Failed to derive extended key for \(addressType.displayName): \(error)", category: .wallet)
-                    continue
-                }
-
-                AppLogger.info("Querying \(addressType.displayName) balance via extended public key", category: .wallet)
-
-                // 2. Fetch xpub info (balance + transactions + used addresses)
-                let xpubInfo: BlockbookXpubInfo
-                do {
-                    xpubInfo = try await blockbookAPI.getXpub(
-                        extKey,
-                        details: "txs",
-                        tokens: "used",
-                        gap: gapLimit
-                    )
-                } catch {
-                    AppLogger.error("Failed to query xpub for \(addressType.displayName): \(error.localizedDescription)", category: .network)
-                    continue
-                }
-
-                // 3. Accumulate balance
-                let confirmedSats = Int64(xpubInfo.balance) ?? 0
-                let unconfirmedSats = Int64(xpubInfo.unconfirmedBalance) ?? 0
-                totalConfirmedSats += confirmedSats
-                totalPendingSats += unconfirmedSats
-
-                AppLogger.info(
-                    "\(addressType.displayName): balance=\(confirmedSats) sats, txs=\(xpubInfo.txs), used=\(xpubInfo.usedTokens ?? 0)",
-                    category: .wallet
-                )
-
-                // 4. Collect all used addresses from tokens for tx classification
-                if let tokens = xpubInfo.tokens {
-                    for token in tokens {
-                        allWalletAddresses.insert(token.name)
-                    }
-                    // Update wallet indices based on highest used address path
-                    updateIndicesFromTokens(wallet: wallet, type: addressType, tokens: tokens)
-                }
-
-                // 5. Fetch UTXOs for this extended key
-                do {
-                    let blockbookUTXOs = try await blockbookAPI.getUTXOs(for: extKey)
-                    for utxo in blockbookUTXOs {
-                        let valueSats = Int64(utxo.value) ?? 0
-                        let valueBTC = Decimal(valueSats) / Constants.satoshisPerBTC
-                        allUTXOs.append(UTXOModel(
-                            txid: utxo.txid,
-                            vout: utxo.vout,
-                            value: valueBTC,
-                            valueSats: valueSats,
-                            confirmations: utxo.confirmations,
-                            address: utxo.address ?? "",
-                            scriptPubKey: nil,
-                            isSpent: false,
-                            derivationPath: utxo.path
-                        ))
-                    }
-                } catch {
-                    AppLogger.error("Failed to fetch UTXOs for \(addressType.displayName): \(error.localizedDescription)", category: .network)
-                }
-
-                // 6. Collect transactions (deduplicated across all types)
-                if let transactions = xpubInfo.transactions {
-                    for tx in transactions where !seenTxids.contains(tx.txid) {
-                        seenTxids.insert(tx.txid)
-                        let txModel = self.parseTransaction(tx, walletAddresses: allWalletAddresses)
-                        allTransactions.append(txModel)
-                    }
-                }
-            }
-
-            // Update published state with aggregated results
-            btcBalance = Decimal(totalConfirmedSats) / Constants.satoshisPerBTC
-            pendingBalance = Decimal(totalPendingSats) / Constants.satoshisPerBTC
-
-            // Store all UTXOs
-            utxoStore.updateUTXOs(allUTXOs)
-
-            // Sort transactions by timestamp descending and cache
-            allTransactions.sort { $0.timestamp > $1.timestamp }
-            await transactionCache.cacheTransactions(allTransactions)
-            recentTransactions = Array(allTransactions.prefix(50))
-
-            // Generate the next unused receive address for the preferred type
-            currentReceiveAddress = ""
-            generateReceiveAddressIfNeeded()
-
-            // Persist address indices
-            persistAddressIndices(wallet: wallet)
-
-            // Fetch fee estimates from Blockbook
+            // 1. Get the extended public key (xpub/ypub/zpub) for this type
+            let extKey: String
             do {
-                let fees = try await feeEstimator.estimateFees()
-                feeEstimates = (
-                    slow: fees.slow.satPerVByte,
-                    medium: fees.medium.satPerVByte,
-                    fast: fees.fast.satPerVByte
-                )
-                AppLogger.info("Fee estimates: slow=\(fees.slow.satPerVByte) med=\(fees.medium.satPerVByte) fast=\(fees.fast.satPerVByte) sat/vB", category: .wallet)
+                extKey = try wallet.extendedPublicKeyForType(addressType)
             } catch {
-                AppLogger.warning("Fee estimation failed, using fallbacks: \(error.localizedDescription)", category: .network)
-                feeEstimates = (slow: 5, medium: 15, fast: 30)
+                AppLogger.error("Failed to derive extended key for \(addressType.displayName): \(error)", category: .wallet)
+                continue
             }
 
-            // Re-compute fiat balance now that btcBalance is finalized
-            if let price = PriceService.shared.currentPrice {
-                fiatBalance = btcBalance * price
+            AppLogger.info("Querying \(addressType.displayName) balance via extended public key", category: .wallet)
+
+            // 2. Fetch xpub info (balance + transactions + used addresses)
+            let xpubInfo: BlockbookXpubInfo
+            do {
+                xpubInfo = try await blockbookAPI.getXpub(
+                    extKey,
+                    details: "txs",
+                    tokens: "used",
+                    gap: gapLimit
+                )
+            } catch {
+                AppLogger.error("Failed to query xpub for \(addressType.displayName): \(error.localizedDescription)", category: .network)
+                continue
             }
 
-            lastUpdated = Date()
-            UserPreferences.shared.recordSync()
+            // 3. Accumulate balance
+            let confirmedSats = Int64(xpubInfo.balance) ?? 0
+            let unconfirmedSats = Int64(xpubInfo.unconfirmedBalance) ?? 0
+            totalConfirmedSats += confirmedSats
+            totalPendingSats += unconfirmedSats
+
             AppLogger.info(
-                "Wallet refresh completed. Balance: \(btcBalance) BTC, UTXOs: \(allUTXOs.count), Txs: \(allTransactions.count)",
+                "\(addressType.displayName): balance=\(confirmedSats) sats, txs=\(xpubInfo.txs), used=\(xpubInfo.usedTokens ?? 0)",
                 category: .wallet
             )
 
-        } catch {
-            AppLogger.error("Wallet refresh failed: \(error.localizedDescription)", category: .network)
-            ErrorHandler.shared.handle(error) { [weak self] in
-                Task { await self?.refresh() }
+            // 4. Collect all used addresses from tokens for tx classification
+            if let tokens = xpubInfo.tokens {
+                for token in tokens {
+                    allWalletAddresses.insert(token.name)
+                }
+                // Update wallet indices based on highest used address path
+                updateIndicesFromTokens(wallet: wallet, type: addressType, tokens: tokens)
+            }
+
+            // 5. Fetch UTXOs for this extended key
+            do {
+                let blockbookUTXOs = try await blockbookAPI.getUTXOs(for: extKey)
+                for utxo in blockbookUTXOs {
+                    let valueSats = Int64(utxo.value) ?? 0
+                    let valueBTC = Decimal(valueSats) / Constants.satoshisPerBTC
+                    allUTXOs.append(UTXOModel(
+                        txid: utxo.txid,
+                        vout: utxo.vout,
+                        value: valueBTC,
+                        valueSats: valueSats,
+                        confirmations: utxo.confirmations,
+                        address: utxo.address ?? "",
+                        scriptPubKey: nil,
+                        isSpent: false,
+                        derivationPath: utxo.path
+                    ))
+                }
+            } catch {
+                AppLogger.error("Failed to fetch UTXOs for \(addressType.displayName): \(error.localizedDescription)", category: .network)
+            }
+
+            // 6. Collect transactions (deduplicated across all types)
+            if let transactions = xpubInfo.transactions {
+                for tx in transactions where !seenTxids.contains(tx.txid) {
+                    seenTxids.insert(tx.txid)
+                    let txModel = self.parseTransaction(tx, walletAddresses: allWalletAddresses)
+                    allTransactions.append(txModel)
+                }
             }
         }
+
+        // Update published state with aggregated results
+        btcBalance = Decimal(totalConfirmedSats) / Constants.satoshisPerBTC
+        pendingBalance = Decimal(totalPendingSats) / Constants.satoshisPerBTC
+
+        // Store all UTXOs
+        utxoStore.updateUTXOs(allUTXOs)
+
+        // Sort transactions by timestamp descending and cache
+        allTransactions.sort { $0.timestamp > $1.timestamp }
+        await transactionCache.cacheTransactions(allTransactions)
+        recentTransactions = Array(allTransactions.prefix(50))
+
+        // Generate the next unused receive address for the preferred type
+        currentReceiveAddress = ""
+        generateReceiveAddressIfNeeded()
+
+        // Persist address indices
+        persistAddressIndices(wallet: wallet)
+
+        // Fetch fee estimates from Blockbook
+        do {
+            let fees = try await feeEstimator.estimateFees()
+            feeEstimates = (
+                slow: fees.slow.satPerVByte,
+                medium: fees.medium.satPerVByte,
+                fast: fees.fast.satPerVByte
+            )
+            AppLogger.info("Fee estimates: slow=\(fees.slow.satPerVByte) med=\(fees.medium.satPerVByte) fast=\(fees.fast.satPerVByte) sat/vB", category: .wallet)
+        } catch {
+            AppLogger.warning("Fee estimation failed, using fallbacks: \(error.localizedDescription)", category: .network)
+            feeEstimates = (slow: 5, medium: 15, fast: 30)
+        }
+
+        // Re-compute fiat balance now that btcBalance is finalized
+        if let price = PriceService.shared.currentPrice {
+            fiatBalance = btcBalance * price
+        }
+
+        lastUpdated = Date()
+        UserPreferences.shared.recordSync()
+        AppLogger.info(
+            "Wallet refresh completed. Balance: \(btcBalance) BTC, UTXOs: \(allUTXOs.count), Txs: \(allTransactions.count)",
+            category: .wallet
+        )
     }
 
     // MARK: - Private Helpers

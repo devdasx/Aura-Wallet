@@ -843,13 +843,13 @@ final class ChatViewModel: ObservableObject {
         switch intent {
         case .price(let currency):
             let curr = currency ?? priceCurrency
-            if let price = try? await PriceService.shared.fetchPrice(for: curr) {
+            if let price = await PriceService.shared.fetchPrice(for: curr) {
                 btcPrice = price
                 priceCurrency = curr
             }
         case .convertAmount(_, let currency):
             if btcPrice == nil || priceCurrency != currency {
-                if let price = try? await PriceService.shared.fetchPrice(for: currency) {
+                if let price = await PriceService.shared.fetchPrice(for: currency) {
                     btcPrice = price
                     priceCurrency = currency
                 }

@@ -189,6 +189,8 @@ struct LockScreenView: View {
     /// Returns the appropriate SF Symbol name for the device's biometric type.
     private var lockScreenBiometricIcon: String {
         switch appRouter.biometricType {
+        case .none:
+            return "lock.fill"
         case .touchID:
             return "touchid"
         case .faceID:

@@ -10,7 +10,7 @@
 // Dependencies: SwiftUI, LocalAuthentication, Combine
 
 import SwiftUI
-import LocalAuthentication
+@preconcurrency import LocalAuthentication
 import Combine
 
 // MARK: - App Screen Enum
@@ -345,6 +345,8 @@ final class AppRouter: ObservableObject {
     /// Returns a human-readable description of the available biometric type.
     var biometricTypeName: String {
         switch biometricType {
+        case .none:
+            return "Biometrics"
         case .faceID:
             return "Face ID"
         case .touchID:
@@ -380,11 +382,11 @@ final class AppRouter: ObservableObject {
             return "Authentication was cancelled."
         case .userFallback:
             return "Please use your device passcode."
-        case .biometryNotAvailable:
+        case .biometryNotAvailable, .touchIDNotAvailable:
             return "Biometric authentication is not available on this device."
-        case .biometryNotEnrolled:
+        case .biometryNotEnrolled, .touchIDNotEnrolled:
             return "No biometric data is enrolled. Please set up Face ID or Touch ID in Settings."
-        case .biometryLockout:
+        case .biometryLockout, .touchIDLockout:
             return "Biometric authentication is locked. Please use your device passcode."
         case .passcodeNotSet:
             return "No device passcode is set. Please enable a passcode in Settings."
@@ -396,6 +398,8 @@ final class AppRouter: ObservableObject {
             return "Authentication context is invalid. Please try again."
         case .notInteractive:
             return "Authentication is not possible right now."
+        case .companionNotAvailable:
+            return "Companion device is not available for authentication."
         @unknown default:
             return L10n.LockScreen.authFailed
         }
@@ -520,7 +524,7 @@ extension AppRouter {
         guard currentScreen == .main else { return }
         guard let url = pendingDeepLink else { return }
         pendingDeepLink = nil
-        processDeepLink(url)
+        _ = processDeepLink(url)
     }
 }
 

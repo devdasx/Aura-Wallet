@@ -263,6 +263,20 @@ final class AIThinkingRules {
                 )
             }
 
+            // Rule 1f2: BIP21 URI pasted → extract address, optionally override amount
+            if looksLikeBIP21URI(trimmed) {
+                let extractor = EntityExtractor()
+                let parsed = extractor.extract(from: trimmed)
+                if let address = parsed.address {
+                    // BIP21 amount overrides the pending amount if present
+                    let resolvedAmount = parsed.amount ?? amount
+                    return .correctedIntent(
+                        .send(amount: resolvedAmount, unit: .btc, address: address, feeLevel: nil),
+                        confidence: 0.95
+                    )
+                }
+            }
+
             // Rule 1g: "same address" / "last address" → reuse from memory
             if (lower.contains("same") || lower.contains("last") || lower.contains("previous")) && lower.contains("address") {
                 if let addr = memory.lastAddress {
@@ -354,6 +368,19 @@ final class AIThinkingRules {
                     return .directResponse([
                         .text("I see a Bitcoin address. What would you like to do with it?\n\n- **Send** Bitcoin to this address\n- **Check** if it's valid\n\nTry: \"send 0.001 BTC to this address\""),
                     ])
+                }
+            }
+
+            // Rule 1n: BIP21 URI when NOT in flow → extract address + amount, start send flow
+            //   "bitcoin:bc1q...?amount=0.1" → send 0.1 BTC to bc1q...
+            if looksLikeBIP21URI(trimmed) {
+                let extractor = EntityExtractor()
+                let parsed = extractor.extract(from: trimmed)
+                if let address = parsed.address {
+                    return .correctedIntent(
+                        .send(amount: parsed.amount, unit: parsed.unit ?? .btc, address: address, feeLevel: nil),
+                        confidence: 0.9
+                    )
                 }
             }
         }
@@ -1090,36 +1117,44 @@ final class AIThinkingRules {
         result: ClassificationResult
     ) -> ThinkingResult? {
 
-        // Only applies when the classifier resolved to .send with no amount
-        // (meaning EntityExtractor rejected it) but the raw input contains a number
-        guard case .send(let amount, _, _, _) = result.intent, amount == nil else { return nil }
+        // Only applies when the classifier resolved to .send
+        guard case .send(let amount, _, _, _) = result.intent else { return nil }
 
         let lower = input.lowercased()
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // Check if the raw input contains an actionable send keyword + a number
+        // Check if the raw input contains an actionable send keyword
         let hasSendWord = containsAny(lower, ["send", "transfer", "pay", "move", "withdraw"])
         guard hasSendWord else { return nil }
 
-        // Extract raw numbers from the input
-        let numberPattern = try? NSRegularExpression(pattern: #"-?\d[\d,]*\.?\d*"#, options: [])
+        // CASE 1: Negative amount — user typed "-1" but minus was stripped by classifier.
+        // Check the RAW input for a minus sign followed by digits.
+        let negativePattern = try? NSRegularExpression(pattern: #"(?:^|\s)-\d"#, options: [])
         let nsLower = lower as NSString
+        if negativePattern?.firstMatch(in: lower, options: [], range: NSRange(location: 0, length: nsLower.length)) != nil {
+            return .directResponse([
+                .text("You can't send a **negative amount**. Please specify a positive amount, e.g., **send 0.001 BTC**."),
+            ])
+        }
+
+        // Remaining checks only apply when the EntityExtractor rejected the amount (amount == nil)
+        guard amount == nil else { return nil }
+
+        // Extract raw numbers from the input to see if there's a rejected value
+        let numberPattern = try? NSRegularExpression(pattern: #"\d[\d,]*\.?\d*"#, options: [])
         let matches = numberPattern?.matches(in: lower, options: [], range: NSRange(location: 0, length: nsLower.length)) ?? []
 
         for match in matches {
             let numStr = nsLower.substring(with: match.range).replacingOccurrences(of: ",", with: "")
             guard let value = Decimal(string: numStr) else { continue }
 
-            if value < 0 {
-                return .directResponse([
-                    .text("You can't send a **negative amount**. Please specify a positive amount, e.g., **send 0.001 BTC**."),
-                ])
-            }
+            // CASE 2: Zero amount
             if value == 0 {
                 return .directResponse([
                     .text("You can't send **zero** Bitcoin. Please specify a valid amount, e.g., **send 0.001 BTC**."),
                 ])
             }
+            // CASE 3: Exceeds Bitcoin supply
             if value > 21_000_000 {
                 return .directResponse([
                     .text("That amount exceeds Bitcoin's total supply of **21 million BTC**. Please enter a realistic amount."),
@@ -1332,6 +1367,12 @@ final class AIThinkingRules {
             return amt == nil && addr == nil
         }
         return false
+    }
+
+    /// Check if input looks like a BIP21 URI.
+    private func looksLikeBIP21URI(_ input: String) -> Bool {
+        let lower = input.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return lower.hasPrefix("bitcoin:")
     }
 
     /// Check if input looks like a Bitcoin address.

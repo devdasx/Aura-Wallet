@@ -454,7 +454,6 @@ final class SentenceAnalyzer {
         case .howMany:
             if memory.currentFlowState != .idle { return SentenceMeaning(type: .question, action: .showFees, subject: nil, object: .fee, modifier: nil, emotion: nil, isNegated: false, confidence: 0.8) }
             return SentenceMeaning(type: .question, action: .checkBalance, subject: .user, object: .balance, modifier: nil, emotion: nil, isNegated: false, confidence: 0.8)
-        default: return SentenceMeaning(type: .question, action: .help, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: false, confidence: 0.5)
         }
     }
 
@@ -712,7 +711,6 @@ final class SentenceAnalyzer {
             switch c {
             case .more, .bigger, .faster, .higher, .up, .increase, .raise: return .increase
             case .less, .smaller, .slower, .cheaper, .lower, .down, .decrease, .reduce: return .decrease
-            default: return nil
             }
         }
         if let q = quant { return mapQuantifier(q) }

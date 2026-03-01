@@ -385,14 +385,14 @@ final class WebSocketManager: NSObject, ObservableObject {
             guard let self = self else { return }
 
             while !Task.isCancelled {
-                guard let task = await self.webSocketTask else { break }
+                guard let task = self.webSocketTask else { break }
 
                 do {
                     let message = try await task.receive()
-                    await self.handleReceivedMessage(message)
+                    self.handleReceivedMessage(message)
                 } catch {
                     if !Task.isCancelled {
-                        await self.handleDisconnect(error: error)
+                        self.handleDisconnect(error: error)
                     }
                     break
                 }
@@ -713,7 +713,7 @@ final class WebSocketManager: NSObject, ObservableObject {
 
                 guard !Task.isCancelled else { return }
 
-                await self?.connect()
+                self?.connect()
             } catch {
                 // Task was cancelled (e.g. user called disconnect())
             }

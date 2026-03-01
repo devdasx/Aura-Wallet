@@ -344,7 +344,6 @@ struct UTXOSelector {
 
             if totalInput >= target + feeNoChange {
                 // We have enough. Determine if we need change.
-                let excess = totalInput - target - feeNoChange
 
                 // Calculate fee with change output
                 let sizeWithChange = estimateVirtualSize(

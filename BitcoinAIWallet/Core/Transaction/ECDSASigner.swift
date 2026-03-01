@@ -69,7 +69,7 @@ struct ECDSASigner {
         guard !R.isInfinity else { throw ECDSAError.signingFailed }
 
         // r = R.x mod n
-        var r = Secp256k1.reduceModN(R.x)
+        let r = Secp256k1.reduceModN(R.x)
         guard !Secp256k1.isZero(r) else { throw ECDSAError.signingFailed }
 
         // s = k^(-1) * (z + r * d) mod n
@@ -305,7 +305,7 @@ struct ECDSASigner {
     /// Parse a DER-encoded ECDSA signature into (r, s) components.
     /// Handles optional trailing sighash type byte.
     static func parseDERSignature(_ data: Data) -> (r: Data, s: Data)? {
-        var bytes = [UInt8](data)
+        let bytes = [UInt8](data)
         guard bytes.count >= 8 else { return nil } // Minimum DER sig size
 
         // Check for SEQUENCE tag
