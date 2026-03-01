@@ -318,7 +318,7 @@ final class WordClassifier {
         }
 
         // ── Evaluatives ──
-        d["good"] = .evaluative(.good); d["great"] = .evaluative(.good); d["nice"] = .emotion(.excitement)
+        d["good"] = .evaluative(.good); d["great"] = .evaluative(.good); d["nice"] = .evaluative(.good)
         d["bad"] = .evaluative(.bad); d["terrible"] = .evaluative(.bad)
         d["enough"] = .evaluative(.enough); d["good_enough"] = .evaluative(.enough)
         d["not_enough"] = .evaluative(.tooLittle)
@@ -330,6 +330,9 @@ final class WordClassifier {
         d["right"] = .evaluative(.right); d["perfect"] = .evaluative(.perfect)
         d["fine"] = .evaluative(.fine); d["sounds_good"] = .evaluative(.good)
         d["reasonable"] = .evaluative(.reasonable); d["fair"] = .evaluative(.fair)
+        d["normal"] = .evaluative(.fine); d["standard"] = .evaluative(.fine)
+        d["regular"] = .evaluative(.fine); d["default"] = .evaluative(.fine)
+        d["moderate"] = .evaluative(.fine)
 
         // ── Directionals ──
         d["back"] = .directional(.back); d["forward"] = .directional(.forward)
@@ -383,7 +386,7 @@ final class WordClassifier {
         d["utxo"] = .bitcoinNoun(.utxo); d["utxos"] = .bitcoinNoun(.utxos)
         d["price"] = .bitcoinNoun(.price); d["سعر"] = .bitcoinNoun(.price); d["precio"] = .bitcoinNoun(.price)
         d["block"] = .bitcoinNoun(.block); d["wallet"] = .bitcoinNoun(.wallet); d["محفظة"] = .bitcoinNoun(.wallet); d["cartera"] = .bitcoinNoun(.wallet)
-        d["network"] = .bitcoinNoun(.network); d["شبكة"] = .bitcoinNoun(.network)
+        d["network"] = .bitcoinNoun(.network); d["status"] = .bitcoinNoun(.network); d["شبكة"] = .bitcoinNoun(.network)
         d["mempool"] = .bitcoinNoun(.mempool); d["mining"] = .bitcoinNoun(.mining); d["تعدين"] = .bitcoinNoun(.mining)
         d["halving"] = .bitcoinNoun(.halving); d["segwit"] = .bitcoinNoun(.segwit); d["taproot"] = .bitcoinNoun(.taproot)
         d["lightning"] = .bitcoinNoun(.lightning); d["seed"] = .bitcoinNoun(.seed); d["key"] = .bitcoinNoun(.key)

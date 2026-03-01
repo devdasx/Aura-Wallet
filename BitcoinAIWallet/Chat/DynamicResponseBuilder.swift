@@ -55,7 +55,16 @@ final class DynamicResponseBuilder {
 
             // Greeting emotion without specific emotion (e.g., "hi there" mid-conversation)
             if meaning.type == .emotional && meaning.emotion == nil {
-                return [.text(ResponseVariations.gladToHear())]
+                // This is a greeting (hi/hello/hey), not positive feedback
+                let hour = Calendar.current.component(.hour, from: Date())
+                let greeting: String
+                switch hour {
+                case 5..<12:  greeting = "Good morning!"
+                case 12..<17: greeting = "Good afternoon!"
+                case 17..<22: greeting = "Good evening!"
+                default:      greeting = "Hey there!"
+                }
+                return [.text("\(greeting) How can I help?")]
             }
 
             // Affordability: "Can I afford it?"
@@ -75,7 +84,14 @@ final class DynamicResponseBuilder {
             // Ellipsis: "..." — but NEVER when in an active send flow
             if meaning.type == .empty && meaning.confidence <= 0.5 {
                 if !flow.isInSendFlow(flow.activeFlow) {
-                    return [.text(ResponseVariations.ellipsis())]
+                    // ONLY show ellipsis for literal "..." / ".." / "…"
+                    if case .unknown(rawText: let raw) = result.intent {
+                        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if trimmed == "..." || trimmed == ".." || trimmed == "…" {
+                            return [.text(ResponseVariations.ellipsis())]
+                        }
+                    }
+                    // Real input that wasn't understood → fall through to standard response
                 }
                 // In a send flow with weak meaning — fall through to re-prompt
             }

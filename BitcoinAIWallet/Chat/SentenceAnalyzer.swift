@@ -370,9 +370,13 @@ final class SentenceAnalyzer {
             return SentenceMeaning(type: .question, action: .checkBalance, subject: .user, object: .balance, modifier: nil, emotion: nil, isNegated: false, confidence: 0.85)
         }
 
-        // "How much is bitcoin/btc?" → price query (bitcoinUnit without ownership)
-        if hasBitcoinUnit && (q == .howMuch || q == .what) {
+        // "How much is bitcoin?" → price query
+        if hasBitcoinUnit && q == .howMuch {
             return SentenceMeaning(type: .question, action: .showPrice, subject: nil, object: .price, modifier: nil, emotion: nil, isNegated: false, confidence: 0.85)
+        }
+        // "What's bitcoin?" / "What is bitcoin?" → knowledge/explain question
+        if hasBitcoinUnit && q == .what && !hasOwnershipContext {
+            return SentenceMeaning(type: .question, action: .explain, subject: nil, object: .specific("bitcoin"), modifier: nil, emotion: nil, isNegated: false, confidence: 0.85)
         }
 
         switch q {
@@ -587,7 +591,7 @@ final class SentenceAnalyzer {
         switch n {
         case .balance: return .balance; case .fee, .fees: return .fee; case .address: return .address
         case .transaction, .transactions: return .transaction; case .utxo, .utxos: return .utxo
-        case .price: return .price; case .wallet: return .wallet; case .network, .mempool: return .network
+        case .price: return .price; case .wallet: return .wallet; case .network: return .network; case .mempool: return .fee
         case .history: return .history; default: return .lastMentioned
         }
     }

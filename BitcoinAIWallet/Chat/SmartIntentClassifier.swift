@@ -111,8 +111,14 @@ final class SmartIntentClassifier {
         }
         cleaned = cleaned.trimmingCharacters(in: .punctuationCharacters).trimmingCharacters(in: .whitespaces)
 
-        // After price: follow-up currency or sats
-        if case .price = lastIntent {
+        // After price or convertAmount: follow-up currency or sats
+        let isPriceRelated: Bool = {
+            switch lastIntent {
+            case .price, .convertAmount: return true
+            default: return false
+            }
+        }()
+        if isPriceRelated {
             if let currency = currencyMap[cleaned] {
                 return ClassificationResult(
                     intent: .price(currency: currency),

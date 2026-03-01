@@ -253,13 +253,18 @@ final class ChatViewModel: ObservableObject {
 
     /// Processes a single intent part through the V18 Language Brain pipeline.
     private func processSmartPart(_ text: String, originalText: String) async {
+        // Normalize smart quotes from iOS keyboard (U+2018/U+2019 → ASCII apostrophe)
+        let normalizedText = text
+            .replacingOccurrences(of: "\u{2019}", with: "'")
+            .replacingOccurrences(of: "\u{2018}", with: "'")
+
         // Step 3: Extract entities
-        let entities = entityExtractor.extract(from: text)
+        let entities = entityExtractor.extract(from: normalizedText)
 
         // Step 4: Bitcoin knowledge check (uses SentenceAnalyzer for meaning-aware filtering)
-        let tempMeaning = SentenceAnalyzer().analyze(text, memory: memory)
-        if let knowledge = knowledgeEngine.answer(meaning: tempMeaning, input: text) {
-            memory.recordUserMessage(originalText, intent: .unknown(rawText: text), entities: entities)
+        let tempMeaning = SentenceAnalyzer().analyze(normalizedText, memory: memory)
+        if let knowledge = knowledgeEngine.answer(meaning: tempMeaning, input: normalizedText) {
+            memory.recordUserMessage(originalText, intent: .unknown(rawText: normalizedText), entities: entities)
             let adapted = personalityEngine.adapt(knowledge, memory: memory)
             try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
             appendResponses([.text(adapted)])
@@ -269,11 +274,11 @@ final class ChatViewModel: ObservableObject {
 
         // Step 5: Smart classification (Language Engine primary, PatternMatcher fallback)
         memory.currentFlowState = conversationState  // Set BEFORE classification so SentenceAnalyzer can check flow state
-        let result = smartClassifier.classify(text, memory: memory)
+        let result = smartClassifier.classify(normalizedText, memory: memory)
 
         // ★ Step 5.5: AI THINKS BEFORE RESPONDING ★
         let thought = thinkingRules.think(
-            input: text,
+            input: normalizedText,
             result: result,
             memory: memory,
             flowState: conversationState,
@@ -301,7 +306,7 @@ final class ChatViewModel: ObservableObject {
             return
 
         case .knowledgeAnswer(let answer):
-            memory.recordUserMessage(originalText, intent: .unknown(rawText: text), entities: entities)
+            memory.recordUserMessage(originalText, intent: .unknown(rawText: normalizedText), entities: entities)
             let adapted = personalityEngine.adapt(answer, memory: memory)
             try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
             appendResponses([.text(adapted)])

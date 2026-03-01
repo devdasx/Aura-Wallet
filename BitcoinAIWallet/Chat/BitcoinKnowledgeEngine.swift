@@ -18,7 +18,10 @@ final class BitcoinKnowledgeEngine {
     func answer(meaning: SentenceMeaning, input: String) -> String? {
         guard meaning.type == .question || isExplainRequest(meaning) else { return nil }
         guard isNotWalletAction(meaning) else { return nil }
-        let normalized = input.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = input.lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\u{2019}", with: "'")
+            .replacingOccurrences(of: "\u{2018}", with: "'")
         return matchKnowledge(normalized)
     }
 
@@ -26,7 +29,10 @@ final class BitcoinKnowledgeEngine {
 
     /// Returns a knowledge response if the input is a Bitcoin question, nil otherwise.
     func answer(_ input: String) -> String? {
-        let normalized = input.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = input.lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\u{2019}", with: "'")
+            .replacingOccurrences(of: "\u{2018}", with: "'")
         guard isQuestionAboutBitcoin(normalized) else { return nil }
         return matchKnowledge(normalized)
     }
@@ -41,12 +47,18 @@ final class BitcoinKnowledgeEngine {
     private func isNotWalletAction(_ m: SentenceMeaning) -> Bool {
         guard let action = m.action else { return true }
         switch action {
-        case .send, .receive, .checkBalance, .showFees, .showPrice,
-             .showHistory, .showAddress, .showUTXO, .confirm, .cancel,
-             .export, .bump, .refresh, .hide, .show, .generate, .convert:
-            return false
-        default:
+        // Knowledge-friendly actions: always allow through
+        case .explain, .help, .about:
             return true
+        // Pure wallet commands: never knowledge
+        case .send, .receive, .confirm, .cancel, .export, .backup, .bump,
+             .refresh, .hide, .show, .generate, .convert, .undo, .repeatLast,
+             .settings, .modify, .compare, .select:
+            return false
+        // Data display actions: allow if it's a "what is" question, block if it's a command
+        case .checkBalance, .showFees, .showPrice, .showHistory,
+             .showAddress, .showUTXO, .showHealth, .showNetwork:
+            return m.type == .question
         }
     }
 
