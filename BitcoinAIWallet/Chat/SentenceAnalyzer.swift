@@ -166,9 +166,31 @@ final class SentenceAnalyzer {
             return analyzeGeneralVerb(gVerb, memory: memory, isQuestion: isQuestion, emotion: emotion)
         }
 
-        // ── RULE 14: Bare Bitcoin address or number ──
+        // ── RULE 14: Bare Bitcoin address (context-aware) ──
         if hasAddress && classified.count <= 3 {
-            return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .address, modifier: nil, emotion: nil, isNegated: false, confidence: 0.6)
+            let confidence: Double = {
+                if case .awaitingAddress = memory.currentFlowState { return 0.95 }
+                return 0.6
+            }()
+            return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .address, modifier: nil, emotion: nil, isNegated: false, confidence: confidence)
+        }
+
+        // ── RULE 14b: Bare number + optional unit, no verb (context-aware) ──
+        if hasNumber && walletVerb == nil && generalVerb == nil {
+            let hasBitcoinUnit = classified.contains { if case .bitcoinUnit = $0.type { return true }; return false }
+            let onlyNumberAndUnit = classified.allSatisfy { w in
+                if case .number = w.type { return true }
+                if case .bitcoinUnit = w.type { return true }
+                return isNoise(w.type)
+            }
+            if onlyNumberAndUnit {
+                if case .awaitingAmount = memory.currentFlowState {
+                    return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .amount, modifier: nil, emotion: nil, isNegated: false, confidence: 0.95)
+                }
+                if hasBitcoinUnit {
+                    return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .amount, modifier: nil, emotion: nil, isNegated: false, confidence: 0.7)
+                }
+            }
         }
 
         // ── RULE 15: Quantifier alone ──
@@ -270,6 +292,7 @@ final class SentenceAnalyzer {
 
     // MARK: - Single Word Analysis
 
+    @MainActor
     private func analyzeSingleWord(_ item: (word: String, type: WordType), isQuestion: Bool, memory: ConversationMemory) -> SentenceMeaning {
         switch item.type {
         case .walletVerb(let v): return SentenceMeaning(type: isQuestion ? .question : .command, action: mapWalletVerb(v), subject: .user, object: nil, modifier: nil, emotion: nil, isNegated: false, confidence: isQuestion ? 0.75 : 0.9)
@@ -281,7 +304,21 @@ final class SentenceAnalyzer {
         case .comparative(let d): return analyzeComparativeSync(d)
         case .directional(let d): return analyzeDirectionalSync(d)
         case .questionWord(let q): return analyzeQuestionWordSync(q)
-        case .bitcoinAddress: return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .address, modifier: nil, emotion: nil, isNegated: false, confidence: 0.6)
+
+        // Context-aware: bare number
+        case .number(let n):
+            if case .awaitingAmount = memory.currentFlowState {
+                return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .amount, modifier: nil, emotion: nil, isNegated: false, confidence: 0.95)
+            }
+            return SentenceMeaning(type: .bare, action: nil, subject: nil, object: .amount, modifier: .specific(n), emotion: nil, isNegated: false, confidence: 0.4)
+
+        // Context-aware: bare Bitcoin address
+        case .bitcoinAddress:
+            if case .awaitingAddress = memory.currentFlowState {
+                return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .address, modifier: nil, emotion: nil, isNegated: false, confidence: 0.95)
+            }
+            return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .address, modifier: nil, emotion: nil, isNegated: false, confidence: 0.6)
+
         case .bitcoinUnit: return SentenceMeaning(type: .question, action: .showPrice, subject: nil, object: .price, modifier: nil, emotion: nil, isNegated: false, confidence: 0.6)
         case .greeting: return SentenceMeaning(type: .emotional, action: nil, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: false, confidence: 0.9)
         default: return SentenceMeaning(type: .empty, action: nil, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: false, confidence: 0.2)

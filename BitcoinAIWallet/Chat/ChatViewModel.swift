@@ -267,9 +267,9 @@ final class ChatViewModel: ObservableObject {
         }
 
         // Step 5: Smart classification (Language Engine primary, PatternMatcher fallback)
+        memory.currentFlowState = conversationState  // Set BEFORE classification so SentenceAnalyzer can check flow state
         let result = smartClassifier.classify(text, memory: memory)
         memory.recordUserMessage(originalText, intent: result.intent, entities: entities)
-        memory.currentFlowState = conversationState
 
         // Step 6: Smart flow processing
         let action = smartFlow.processMessage(result.intent, meaning: result.meaning, memory: memory)
