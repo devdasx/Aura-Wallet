@@ -2,13 +2,15 @@
 // Bitcoin AI Wallet
 //
 // Main business logic for the AI chat interface.
-// V16 Smart Pipeline: seed check → reference resolution → multi-intent
-// split → scored classification → memory recording → smart flow →
-// memory-aware response → personality adaptation → memory update.
+// V18 Language Brain Pipeline: seed check → reference resolution →
+// multi-intent split → knowledge check → smart classification →
+// smart flow → meaning-aware response → personality adaptation →
+// memory update.
 //
-// Coordinates 8 interconnected systems:
-// IntentParser, ConversationMemory, ReferenceResolver, ConversationFlow,
-// ResponseGenerator, MultiIntentHandler, PersonalityEngine, EntityExtractor.
+// Coordinates V18 systems:
+// SmartIntentClassifier, ConversationMemory, ReferenceResolver,
+// SmartConversationFlow, DynamicResponseBuilder, ResponseGenerator,
+// MultiIntentHandler, PersonalityEngine, BitcoinKnowledgeEngine.
 //
 // Platform: iOS 17.0+
 // Framework: Foundation, SwiftUI
@@ -122,16 +124,17 @@ final class ChatViewModel: ObservableObject {
         !messages.contains(where: { $0.isFromUser })
     }
 
-    // MARK: - Dependencies
+    // MARK: - V18 Dependencies
 
-    private let intentParser: IntentParser
+    private let smartClassifier: SmartIntentClassifier
     let responseGenerator: ResponseGenerator
-    private let conversationFlow: ConversationFlow
+    private let responseBuilder: DynamicResponseBuilder
+    private let smartFlow: SmartConversationFlow
     private let referenceResolver: ReferenceResolver
     private let multiIntentHandler: MultiIntentHandler
     private let personalityEngine: PersonalityEngine
     private let knowledgeEngine: BitcoinKnowledgeEngine
-    private let patternMatcher: PatternMatcher
+    private let entityExtractor: EntityExtractor
     let memory: ConversationMemory
 
     // MARK: - Conversation Persistence
@@ -160,7 +163,7 @@ final class ChatViewModel: ObservableObject {
     var addressType: String = "SegWit"
     var currentFeeEstimates: (slow: Decimal, medium: Decimal, fast: Decimal)? {
         didSet {
-            conversationFlow.liveFeeEstimates = currentFeeEstimates
+            smartFlow.liveFeeEstimates = currentFeeEstimates
         }
     }
     var recentTransactions: [TransactionDisplayItem]?
@@ -177,28 +180,26 @@ final class ChatViewModel: ObservableObject {
     // MARK: - Initialization
 
     init() {
-        self.intentParser = IntentParser()
-        self.responseGenerator = ResponseGenerator()
-        self.conversationFlow = ConversationFlow()
-        self.referenceResolver = ReferenceResolver()
-        self.multiIntentHandler = MultiIntentHandler()
-        self.personalityEngine = PersonalityEngine()
-        self.knowledgeEngine = BitcoinKnowledgeEngine()
-        self.patternMatcher = PatternMatcher()
-        self.memory = ConversationMemory()
-        addGreeting()
-    }
+        let patternMatcher = PatternMatcher()
+        let entityExtractor = EntityExtractor()
+        let referenceResolver = ReferenceResolver()
+        let responseGenerator = ResponseGenerator()
+        let memory = ConversationMemory()
 
-    init(intentParser: IntentParser, responseGenerator: ResponseGenerator, conversationFlow: ConversationFlow) {
-        self.intentParser = intentParser
+        self.smartClassifier = SmartIntentClassifier(
+            patternMatcher: patternMatcher,
+            entityExtractor: entityExtractor,
+            referenceResolver: referenceResolver
+        )
         self.responseGenerator = responseGenerator
-        self.conversationFlow = conversationFlow
-        self.referenceResolver = ReferenceResolver()
+        self.responseBuilder = DynamicResponseBuilder(responseGenerator: responseGenerator)
+        self.smartFlow = SmartConversationFlow()
+        self.referenceResolver = referenceResolver
         self.multiIntentHandler = MultiIntentHandler()
         self.personalityEngine = PersonalityEngine()
         self.knowledgeEngine = BitcoinKnowledgeEngine()
-        self.patternMatcher = PatternMatcher()
-        self.memory = ConversationMemory()
+        self.entityExtractor = entityExtractor
+        self.memory = memory
         addGreeting()
     }
 
@@ -231,7 +232,7 @@ final class ChatViewModel: ObservableObject {
             hasAutoTitled = true
         }
 
-        // V16 Smart Pipeline
+        // V18 Language Brain Pipeline
         // Step 1: Reference resolution
         let references = referenceResolver.resolve(text, memory: memory)
         let enrichedText = referenceResolver.enrichWithReferences(text, references)
@@ -239,172 +240,196 @@ final class ChatViewModel: ObservableObject {
         // Step 2: Multi-intent split
         let parts = multiIntentHandler.splitIfCompound(enrichedText)
 
-        // Step 3-8: Process all parts in a single async task
+        // Step 3-8: Process all parts
         Task { [weak self] in
             guard let self = self else { return }
             for part in parts {
-                await self.processSmartPart(part, originalText: text, references: references)
+                await self.processSmartPart(part, originalText: text)
             }
+            self.isTyping = false
         }
     }
 
-    /// Processes a single intent part through the V17 smart pipeline.
-    private func processSmartPart(_ text: String, originalText: String, references: [ResolvedEntity]) async {
-        // Step 3a: Extract entities early (needed by knowledge + classification)
-        let entities = EntityExtractor().extract(from: text)
+    /// Processes a single intent part through the V18 Language Brain pipeline.
+    private func processSmartPart(_ text: String, originalText: String) async {
+        // Step 3: Extract entities
+        let entities = entityExtractor.extract(from: text)
 
-        // Step 3b: Check Bitcoin knowledge questions BEFORE classification
-        if let knowledgeResponse = knowledgeEngine.answer(text) {
+        // Step 4: Bitcoin knowledge check (uses SentenceAnalyzer for meaning-aware filtering)
+        let tempMeaning = SentenceAnalyzer().analyze(text, memory: memory)
+        if let knowledge = knowledgeEngine.answer(meaning: tempMeaning, input: text) {
             memory.recordUserMessage(originalText, intent: .unknown(rawText: text), entities: entities)
-            let adapted = personalityEngine.adapt(knowledgeResponse, memory: memory)
+            let adapted = personalityEngine.adapt(knowledge, memory: memory)
             try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
             appendResponses([.text(adapted)])
-            isTyping = false
             memory.recordAIResponse(adapted, shownData: nil)
             return
         }
 
-        // Step 3c: Check emotion/social signals
-        let emotion = patternMatcher.detectEmotion(text)
-        if emotion.emotion != .neutral && emotion.confidence >= 0.7 {
-            // Check if this is PURELY emotional (no wallet intent mixed in)
-            let classification = intentParser.classify(text, memory: memory, references: references)
-            if case .unknown = classification.intent {
-                memory.recordUserMessage(originalText, intent: .greeting, entities: entities)
-                let emotionKey: String
-                switch emotion.emotion {
-                case .gratitude: emotionKey = "gratitude"
-                case .frustration: emotionKey = "frustration"
-                case .confusion: emotionKey = "confusion"
-                case .humor: emotionKey = "humor"
-                case .sadness: emotionKey = "sadness"
-                case .excitement: emotionKey = "gratitude" // excitement uses affirmative tone
-                case .affirmation: emotionKey = "gratitude"
-                default: emotionKey = "gratitude"
-                }
-                let emotionText = ResponseTemplates.emotionResponse(for: emotionKey, context: nil)
-                let adapted = personalityEngine.adapt(emotionText, memory: memory)
-                try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
-                appendResponses([.text(adapted)])
-                isTyping = false
-                memory.recordAIResponse(adapted, shownData: nil)
-                return
-            }
-        }
-
-        // Step 3d: Check for pure punctuation (ellipsis, hesitation)
-        let punctuation = PunctuationContext.analyze(text)
-        if punctuation.isPurePunctuation {
-            memory.recordUserMessage(originalText, intent: .unknown(rawText: text), entities: entities)
-            let response: String
-            if text.contains("?") {
-                response = ResponseTemplates.helpResponse()
-            } else {
-                response = ResponseTemplates.emotionResponse(for: punctuation.isEllipsis ? "ellipsis" : "hesitant", context: nil)
-            }
-            try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
-            appendResponses([.text(response)])
-            isTyping = false
-            memory.recordAIResponse(response, shownData: nil)
-            return
-        }
-
-        // Step 4: Scored classification with memory
-        let classification = intentParser.classify(text, memory: memory, references: references)
-        let intent = classification.intent
-
-        // Step 4b: Handle question-about-action (e.g., "send?" → informational, not command)
-        if punctuation.isQuestion, case .send = intent, classification.confidence < 0.7 {
-            memory.recordUserMessage(originalText, intent: intent, entities: entities)
-            let questionResponse = ResponseTemplates.questionAboutAction("send")
-            try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
-            appendResponses([.text(questionResponse)])
-            isTyping = false
-            memory.recordAIResponse(questionResponse, shownData: nil)
-            return
-        }
-
-        // Step 5: Record in memory
-        memory.recordUserMessage(originalText, intent: intent, entities: entities)
+        // Step 5: Smart classification (Language Engine primary, PatternMatcher fallback)
+        let result = smartClassifier.classify(text, memory: memory)
+        memory.recordUserMessage(originalText, intent: result.intent, entities: entities)
         memory.currentFlowState = conversationState
 
         // Step 6: Smart flow processing
-        let flowAction = conversationFlow.processSmartIntent(intent, memory: memory)
-
-        let effectiveIntent: WalletIntent
-        var resumeHint: String?
-
-        switch flowAction {
-        case .advanceFlow(let newState):
-            let previousState = conversationState
-            conversationState = newState
-            effectiveIntent = resolveEffectiveIntent(rawIntent: intent, previousState: previousState, newState: newState)
-
-        case .pauseAndHandle(let interruptIntent, let hint):
-            effectiveIntent = interruptIntent
-            resumeHint = hint
-
-        case .modifyFlow(let newState):
-            conversationState = newState
-            effectiveIntent = resolveEffectiveIntent(rawIntent: intent, previousState: conversationState, newState: newState)
-
-        case .handleNormally(let normalIntent):
-            effectiveIntent = normalIntent
-        }
+        let action = smartFlow.processMessage(result.intent, meaning: result.meaning, memory: memory)
 
         // Show processing card for async intents
-        if let processing = self.processingConfig(for: effectiveIntent) {
-            self.activeProcessingState = processing
+        let effectiveIntent = resolveIntentFromAction(action, result: result)
+        if let processing = processingConfig(for: effectiveIntent) {
+            activeProcessingState = processing
             processing.start()
-            self.isTyping = false
+            isTyping = false
         }
 
         // Fetch price if needed
-        await self.fetchPriceIfNeeded(for: effectiveIntent)
+        await fetchPriceIfNeeded(for: effectiveIntent)
 
-        if self.activeProcessingState != nil {
-            self.activeProcessingState?.completeCurrentStep()
+        if activeProcessingState != nil {
+            activeProcessingState?.completeCurrentStep()
         }
 
-        try? await Task.sleep(nanoseconds: self.typingDelayNanoseconds)
+        try? await Task.sleep(nanoseconds: typingDelayNanoseconds)
 
-        let context = self.buildContext()
+        // Step 7: Build response based on flow action
+        let context = buildContext()
+        var responses: [ResponseType]
 
-        // Step 6: Memory-aware response generation
-        var responses = self.responseGenerator.generateResponse(
-            for: effectiveIntent, context: context,
-            memory: self.memory, classification: classification
-        )
+        switch action {
+        case .advanceFlow(let newState):
+            conversationState = newState
+            responses = responseBuilder.buildResponse(for: result, context: context, memory: memory, flow: smartFlow)
 
-        // Step 7: Personality adaptation
-        responses = self.personalityEngine.adaptAll(responses, memory: self.memory)
+        case .handleNormally(let intent):
+            let normalResult = ClassificationResult(intent: intent, confidence: 0.9, needsClarification: false, alternatives: [], meaning: result.meaning)
+            responses = responseBuilder.buildResponse(for: normalResult, context: context, memory: memory, flow: smartFlow)
 
-        // Append resume hint if flow was paused
-        if let hint = resumeHint {
+        case .pauseAndHandle(let intent, let hint):
+            let pauseResult = ClassificationResult(intent: intent, confidence: 0.9, needsClarification: false, alternatives: [], meaning: result.meaning)
+            responses = responseBuilder.buildResponse(for: pauseResult, context: context, memory: memory, flow: smartFlow)
             responses.append(.text(hint))
+
+        case .modifyFlow(let field, let newValue):
+            responses = handleFlowModification(field: field, newValue: newValue, context: context)
+
+        case .respondToMeaning(let meaning):
+            let meaningResult = ClassificationResult(intent: result.intent, confidence: result.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+            responses = responseBuilder.buildResponse(for: meaningResult, context: context, memory: memory, flow: smartFlow)
         }
+
+        // Step 8: Personality adaptation
+        responses = personalityEngine.adaptAll(responses, memory: memory)
 
         // Complete remaining processing steps and dismiss
-        if let processing = self.activeProcessingState {
+        if let processing = activeProcessingState {
             while !processing.isComplete && !processing.isFailed {
                 processing.completeCurrentStep()
             }
-            await self.dismissProcessingCard()
+            await dismissProcessingCard()
         }
 
-        self.appendResponses(responses)
-        self.isTyping = false
+        appendResponses(responses)
 
-        // Step 8: Record AI response in memory
+        // Step 9: Record AI response in memory
         let responseText = responses.compactMap { resp -> String? in
             if case .text(let t) = resp { return t }
             return nil
         }.joined(separator: "\n")
-        let shownData = self.responseGenerator.extractShownData(from: responses, context: context)
-        self.memory.recordAIResponse(responseText, shownData: shownData)
+        let shownData = responseGenerator.extractShownData(from: responses, context: context)
+        memory.recordAIResponse(responseText, shownData: shownData)
 
         // Handle side effects
-        self.handleSideEffects(for: effectiveIntent)
+        handleSideEffects(for: effectiveIntent)
+    }
+
+    /// Extracts the effective intent from a FlowAction for processing cards and side effects.
+    private func resolveIntentFromAction(_ action: FlowAction, result: ClassificationResult) -> WalletIntent {
+        switch action {
+        case .advanceFlow: return result.intent
+        case .handleNormally(let intent): return intent
+        case .pauseAndHandle(let intent, _): return intent
+        case .modifyFlow: return result.intent
+        case .respondToMeaning: return result.intent
+        }
+    }
+
+    /// Handles in-flight modifications to fee or amount during send flow.
+    private func handleFlowModification(field: String, newValue: String, context: ConversationContext) -> [ResponseType] {
+        guard let pending = smartFlow.pendingTransaction else {
+            return [.text("Nothing to modify right now.")]
+        }
+
+        if field == "fee" {
+            let newLevel: FeeLevel
+            switch newValue {
+            case "increase", "fast": newLevel = .fast
+            case "decrease", "slow": newLevel = .slow
+            default: newLevel = .medium
+            }
+            let feeRate = resolveFeeRate(level: newLevel, context: context)
+            let feeBTC = (feeRate * Decimal(140)) / 100_000_000
+            let estimatedTime = resolveEstimatedTime(level: newLevel)
+            let remaining = max((context.walletBalance ?? 0) - pending.amount - feeBTC, 0)
+
+            smartFlow.pendingTransaction = PendingTransactionInfo(
+                toAddress: pending.toAddress, amount: pending.amount,
+                fee: feeBTC, feeRate: feeRate, estimatedMinutes: estimatedTime
+            )
+            conversationState = .awaitingConfirmation(amount: pending.amount, address: pending.toAddress, fee: feeBTC)
+            smartFlow.activeFlow = conversationState
+
+            return [.sendConfirmCard(
+                toAddress: pending.toAddress, amount: pending.amount,
+                fee: feeBTC, feeRate: feeRate,
+                estimatedTime: estimatedTime, remainingBalance: remaining
+            )]
+        }
+
+        if field == "amount" {
+            var newAmount = pending.amount
+            switch newValue {
+            case "half": newAmount = pending.amount / 2
+            case "double": newAmount = pending.amount * 2
+            case "increase": newAmount = pending.amount * Decimal(string: "1.5")!
+            case "decrease": newAmount = pending.amount * Decimal(string: "0.75")!
+            case "max": newAmount = max((context.walletBalance ?? 0) - pending.fee, 0)
+            default: break
+            }
+            let remaining = max((context.walletBalance ?? 0) - newAmount - pending.fee, 0)
+
+            smartFlow.pendingTransaction = PendingTransactionInfo(
+                toAddress: pending.toAddress, amount: newAmount,
+                fee: pending.fee, feeRate: pending.feeRate,
+                estimatedMinutes: pending.estimatedMinutes
+            )
+            conversationState = .awaitingConfirmation(amount: newAmount, address: pending.toAddress, fee: pending.fee)
+            smartFlow.activeFlow = conversationState
+
+            return [.sendConfirmCard(
+                toAddress: pending.toAddress, amount: newAmount,
+                fee: pending.fee, feeRate: pending.feeRate,
+                estimatedTime: pending.estimatedMinutes, remainingBalance: remaining
+            )]
+        }
+
+        return [.text("What would you like to modify?")]
+    }
+
+    private func resolveFeeRate(level: FeeLevel, context: ConversationContext) -> Decimal {
+        guard let estimates = context.currentFeeEstimates else { return 15 }
+        switch level {
+        case .slow: return estimates.slow
+        case .fast: return estimates.fast
+        case .medium, .custom: return estimates.medium
+        }
+    }
+
+    private func resolveEstimatedTime(level: FeeLevel) -> Int {
+        switch level {
+        case .fast: return 10
+        case .medium, .custom: return 20
+        case .slow: return 60
+        }
     }
 
     func sendMessage(_ text: String) {
@@ -436,11 +461,11 @@ final class ChatViewModel: ObservableObject {
         processing.start()
         isTyping = false
 
-        let _ = conversationFlow.processIntent(.confirmAction)
+        let _ = smartFlow.processMessage(.confirmAction, meaning: nil, memory: memory)
 
-        guard let pending = conversationFlow.pendingTransaction else {
+        guard let pending = smartFlow.pendingTransaction else {
             processing.failCurrentStep(error: L10n.Error.transactionFailed)
-            conversationFlow.markError(L10n.Error.transactionFailed)
+            smartFlow.markError(L10n.Error.transactionFailed)
             conversationState = .error(L10n.Error.transactionFailed)
             await dismissProcessingCard()
             let failText = ResponseTemplates.sendFailed(reason: L10n.Error.transactionFailed)
@@ -452,7 +477,7 @@ final class ChatViewModel: ObservableObject {
         guard let walletState = walletState,
               let hdWallet = walletState.hdWallet else {
             processing.failCurrentStep(error: "Wallet not available")
-            conversationFlow.markError("Wallet not available")
+            smartFlow.markError("Wallet not available")
             conversationState = .error("Wallet not available")
             await dismissProcessingCard()
             let failText = ResponseTemplates.sendFailed(reason: "Wallet not available. Please restart the app.")
@@ -531,7 +556,7 @@ final class ChatViewModel: ObservableObject {
             processing.completeCurrentStep() // Step 3 done: "Broadcasting"
 
             // Success — mark flow completed
-            conversationFlow.markCompleted()
+            smartFlow.markCompleted()
             conversationState = .completed
 
             // Mark consumed UTXOs as spent for immediate UI update
@@ -568,7 +593,7 @@ final class ChatViewModel: ObservableObject {
             // Handle any failure in build/sign/broadcast
             let reason = error.localizedDescription
             processing.failCurrentStep(error: reason)
-            conversationFlow.markError(reason)
+            smartFlow.markError(reason)
             conversationState = .error(reason)
             await dismissProcessingCard()
 
@@ -585,7 +610,7 @@ final class ChatViewModel: ObservableObject {
     }
 
     func handleTransactionSuccess(txid: String, amount: Decimal, toAddress: String) {
-        conversationFlow.markCompleted()
+        smartFlow.markCompleted()
         conversationState = .completed
         let successText = ResponseTemplates.sendSuccess(txid: txid)
         messages.append(.ai(successText))
@@ -602,7 +627,7 @@ final class ChatViewModel: ObservableObject {
     }
 
     func handleTransactionFailure(reason: String) {
-        conversationFlow.markError(reason)
+        smartFlow.markError(reason)
         conversationState = .error(reason)
         let failText = ResponseTemplates.sendFailed(reason: reason)
         messages.append(.ai(failText))
@@ -611,7 +636,7 @@ final class ChatViewModel: ObservableObject {
     }
 
     func cancelTransaction() {
-        conversationFlow.reset()
+        smartFlow.reset()
         conversationState = .idle
         let cancelText = ResponseTemplates.operationCancelled()
         messages.append(.ai(cancelText))
@@ -682,7 +707,7 @@ final class ChatViewModel: ObservableObject {
 
     func clearConversation() {
         messages.removeAll()
-        conversationFlow.reset()
+        smartFlow.reset()
         conversationState = .idle
         inputText = ""
         isTyping = false
@@ -697,7 +722,7 @@ final class ChatViewModel: ObservableObject {
     func loadConversation(_ conversation: Conversation) {
         // Reset state
         messages.removeAll()
-        conversationFlow.reset()
+        smartFlow.reset()
         conversationState = .idle
         inputText = ""
         isTyping = false
@@ -739,12 +764,11 @@ final class ChatViewModel: ObservableObject {
 
             // Rebuild ConversationMemory from persisted messages
             // so reference resolution works in loaded conversations
-            let entityExtractor = EntityExtractor()
             for msg in persisted {
                 if msg.role == "user" {
                     let entities = entityExtractor.extract(from: msg.content)
-                    let classification = intentParser.classify(msg.content, memory: memory)
-                    memory.recordUserMessage(msg.content, intent: classification.intent, entities: entities)
+                    let result = smartClassifier.classify(msg.content, memory: memory)
+                    memory.recordUserMessage(msg.content, intent: result.intent, entities: entities)
                 } else {
                     memory.recordAIResponse(msg.content, shownData: nil)
                 }
@@ -810,43 +834,13 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    private func resolveEffectiveIntent(
-        rawIntent: WalletIntent,
-        previousState: ConversationState,
-        newState: ConversationState
-    ) -> WalletIntent {
-        switch rawIntent {
-        case .balance, .receive, .history, .feeEstimate, .help, .about,
-             .confirmAction, .cancelAction, .settings, .transactionDetail,
-             .hideBalance, .showBalance, .refreshWallet, .price, .convertAmount,
-             .newAddress, .walletHealth, .exportHistory, .utxoList, .bumpFee,
-             .networkStatus, .greeting:
-            return rawIntent
-        case .send:
-            return rawIntent
-        case .unknown:
-            break
-        }
-
-        switch newState {
-        case .awaitingConfirmation(let amount, let address, _):
-            return .send(amount: amount, unit: .btc, address: address, feeLevel: .medium)
-        case .awaitingAmount:
-            return .send(amount: nil, unit: nil, address: nil, feeLevel: nil)
-        case .awaitingAddress:
-            return .send(amount: nil, unit: nil, address: nil, feeLevel: nil)
-        default:
-            return rawIntent
-        }
-    }
-
     func buildContext() -> ConversationContext {
         ConversationContext(
             walletBalance: walletBalance,
             fiatBalance: fiatBalance,
             pendingBalance: pendingBalance,
             utxoCount: utxoCount,
-            pendingTransaction: conversationFlow.pendingTransaction,
+            pendingTransaction: smartFlow.pendingTransaction,
             recentTransactions: recentTransactions,
             currentFeeEstimates: currentFeeEstimates,
             currentReceiveAddress: currentReceiveAddress,

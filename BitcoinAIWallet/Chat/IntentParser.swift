@@ -225,9 +225,8 @@ final class IntentParser {
         }
 
         // PRIORITY 2: Language Engine (PRIMARY)
-        let classifiedWords = wordClassifier.classify(trimmed)
-        let meaning = sentenceAnalyzer.analyze(classifiedWords)
-        let languageResult = meaningResolver.resolve(meaning, memory: memory)
+        let meaning = sentenceAnalyzer.analyze(trimmed, memory: memory)
+        let languageResult = meaningResolver.resolve(meaning, memory: memory, entityExtractor: entityExtractor, input: trimmed)
 
         // PRIORITY 3: PatternMatcher (FALLBACK)
         let patternResult = patternMatcherClassification(normalized, entities: entities,

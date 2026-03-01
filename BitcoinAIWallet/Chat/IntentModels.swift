@@ -322,6 +322,15 @@ struct ClassificationResult {
     let confidence: Double
     let needsClarification: Bool
     let alternatives: [IntentScore]
+    let meaning: SentenceMeaning?
+
+    init(intent: WalletIntent, confidence: Double, needsClarification: Bool, alternatives: [IntentScore], meaning: SentenceMeaning? = nil) {
+        self.intent = intent
+        self.confidence = confidence
+        self.needsClarification = needsClarification
+        self.alternatives = alternatives
+        self.meaning = meaning
+    }
 }
 
 // MARK: - SignalWeight

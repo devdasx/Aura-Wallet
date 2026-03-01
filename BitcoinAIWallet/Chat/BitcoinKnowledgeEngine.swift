@@ -11,13 +11,43 @@ import Foundation
 
 final class BitcoinKnowledgeEngine {
 
-    // MARK: - Public API
+    // MARK: - V18 Public API
+
+    /// Returns a knowledge response if the input is a Bitcoin knowledge question, nil otherwise.
+    /// Only answers questions/explain requests — NOT wallet action commands.
+    func answer(meaning: SentenceMeaning, input: String) -> String? {
+        guard meaning.type == .question || isExplainRequest(meaning) else { return nil }
+        guard isNotWalletAction(meaning) else { return nil }
+        let normalized = input.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return matchKnowledge(normalized)
+    }
+
+    // MARK: - Legacy Public API
 
     /// Returns a knowledge response if the input is a Bitcoin question, nil otherwise.
     func answer(_ input: String) -> String? {
         let normalized = input.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard isQuestionAboutBitcoin(normalized) else { return nil }
         return matchKnowledge(normalized)
+    }
+
+    // MARK: - V18 Helpers
+
+    private func isExplainRequest(_ m: SentenceMeaning) -> Bool {
+        if case .explain = m.action { return true }
+        return false
+    }
+
+    private func isNotWalletAction(_ m: SentenceMeaning) -> Bool {
+        guard let action = m.action else { return true }
+        switch action {
+        case .send, .receive, .checkBalance, .showFees, .showPrice,
+             .showHistory, .showAddress, .showUTXO, .confirm, .cancel,
+             .export, .bump, .refresh, .hide, .show, .generate, .convert:
+            return false
+        default:
+            return true
+        }
     }
 
     // MARK: - Question Detection

@@ -2,18 +2,9 @@
 // Bitcoin AI Wallet
 //
 // Maps SentenceMeaning → ClassificationResult → WalletIntent.
-// Bridges the language analysis layer to the existing intent system.
-//
-// Special cases handled:
-// - Bare questions ("What?" "Why?") → context-dependent
-// - Evaluations ("Too much" "Good enough") → modifier-aware
-// - Affordability ("Can I afford it?") → balance check
-// - Safety questions ("Is that safe?") → contextual help
-// - Negated commands ("Don't send") → cancel
-// - Comparatives ("Faster" "Cheaper") → fee modification
+// Bridges language analysis to the existing intent system.
 //
 // Platform: iOS 17.0+
-// Framework: Foundation
 
 import Foundation
 
@@ -21,326 +12,141 @@ import Foundation
 
 final class MeaningResolver {
 
-    // MARK: - Resolution
-
-    /// Maps a SentenceMeaning to a ClassificationResult with the appropriate WalletIntent.
     @MainActor
-    func resolve(_ meaning: SentenceMeaning, memory: ConversationMemory) -> ClassificationResult {
-        // Empty input
-        if meaning.type == .empty {
-            return ClassificationResult(
-                intent: .unknown(rawText: ""),
-                confidence: 0,
-                needsClarification: true,
-                alternatives: []
-            )
-        }
+    func resolve(_ meaning: SentenceMeaning, memory: ConversationMemory, entityExtractor: EntityExtractor, input: String) -> ClassificationResult {
 
-        // Emotion-only (greetings, thanks, etc.)
+        // Emotion-only → greeting/social
         if meaning.type == .emotional {
-            return resolveEmotion(meaning)
+            return ClassificationResult(intent: .greeting, confidence: 0.8, needsClarification: false, alternatives: [], meaning: meaning)
         }
 
-        // Bare questions use conversation context
-        if meaning.type == .bare {
-            return resolveBareQuestion(meaning, memory: memory)
-        }
-
-        // Navigation / comparatives
-        if meaning.type == .navigation {
-            return resolveNavigation(meaning, memory: memory)
-        }
-
-        // Evaluations
+        // Evaluation → pass through with meaning
         if meaning.type == .evaluation {
             return resolveEvaluation(meaning, memory: memory)
         }
 
-        // Negated action → cancel
-        if meaning.isNegated, let action = meaning.action, isDestructiveAction(action) {
-            return ClassificationResult(
-                intent: .cancelAction,
-                confidence: meaning.confidence,
-                needsClarification: false,
-                alternatives: []
-            )
+        // Navigation
+        if meaning.type == .navigation {
+            return resolveNavigation(meaning, memory: memory)
         }
 
-        // Direct action mapping
-        if let action = meaning.action {
-            let intent = mapActionToIntent(action, meaning: meaning)
-            return ClassificationResult(
-                intent: intent,
-                confidence: meaning.confidence,
-                needsClarification: meaning.confidence < 0.5,
-                alternatives: []
-            )
+        guard let action = meaning.action else {
+            return ClassificationResult(intent: .unknown(rawText: input), confidence: meaning.confidence, needsClarification: true, alternatives: [], meaning: meaning)
         }
 
-        // Fallback
-        return ClassificationResult(
-            intent: .unknown(rawText: ""),
-            confidence: meaning.confidence,
-            needsClarification: true,
-            alternatives: []
-        )
-    }
-
-    // MARK: - Emotion Resolution
-
-    private func resolveEmotion(_ meaning: SentenceMeaning) -> ClassificationResult {
-        guard let emotion = meaning.emotion else {
-            return ClassificationResult(intent: .greeting, confidence: 0.7,
-                                        needsClarification: false, alternatives: [])
-        }
-
-        switch emotion {
-        case .gratitude:
-            return ClassificationResult(intent: .greeting, confidence: 0.85,
-                                        needsClarification: false, alternatives: [])
-        case .excitement:
-            return ClassificationResult(intent: .greeting, confidence: 0.8,
-                                        needsClarification: false, alternatives: [])
-        case .frustration:
-            return ClassificationResult(intent: .help, confidence: 0.7,
-                                        needsClarification: false, alternatives: [])
-        case .confusion:
-            return ClassificationResult(intent: .help, confidence: 0.75,
-                                        needsClarification: false, alternatives: [])
-        case .humor:
-            return ClassificationResult(intent: .greeting, confidence: 0.6,
-                                        needsClarification: false, alternatives: [])
-        case .concern:
-            return ClassificationResult(intent: .help, confidence: 0.7,
-                                        needsClarification: false, alternatives: [])
-        }
-    }
-
-    // MARK: - Bare Question Resolution
-
-    @MainActor
-    private func resolveBareQuestion(_ meaning: SentenceMeaning,
-                                      memory: ConversationMemory) -> ClassificationResult {
-        // Use last user intent to provide context
-        if let lastIntent = memory.lastUserIntent {
-            switch lastIntent {
-            case .balance:
-                return ClassificationResult(intent: .balance, confidence: 0.7,
-                                            needsClarification: false, alternatives: [])
-            case .send:
-                return ClassificationResult(intent: .help, confidence: 0.65,
-                                            needsClarification: true, alternatives: [])
-            case .feeEstimate:
-                return ClassificationResult(intent: .feeEstimate, confidence: 0.7,
-                                            needsClarification: false, alternatives: [])
-            case .history:
-                return ClassificationResult(intent: .history(count: nil), confidence: 0.7,
-                                            needsClarification: false, alternatives: [])
-            case .price:
-                return ClassificationResult(intent: .price(currency: nil), confidence: 0.7,
-                                            needsClarification: false, alternatives: [])
-            default:
-                break
+        switch action {
+        case .send:
+            if meaning.isNegated { return ClassificationResult(intent: .cancelAction, confidence: 0.8, needsClarification: false, alternatives: [], meaning: meaning) }
+            if meaning.type == .question {
+                return ClassificationResult(intent: .help, confidence: 0.7, needsClarification: false, alternatives: [IntentScore(intent: .send(amount: nil, unit: nil, address: nil, feeLevel: nil), confidence: 0.4, source: "question")], meaning: meaning)
             }
-        }
+            let e = entityExtractor.extract(from: input)
+            return ClassificationResult(intent: .send(amount: e.amount, unit: e.unit, address: e.address, feeLevel: e.feeLevel), confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
 
-        // No context — ask for clarification
-        return ClassificationResult(
-            intent: .help,
-            confidence: 0.4,
-            needsClarification: true,
-            alternatives: []
-        )
-    }
-
-    // MARK: - Navigation Resolution
-
-    @MainActor
-    private func resolveNavigation(_ meaning: SentenceMeaning,
-                                    memory: ConversationMemory) -> ClassificationResult {
-        guard let modifier = meaning.modifier else {
-            // Repeat last action
-            if let lastIntent = memory.lastUserIntent {
-                return ClassificationResult(intent: lastIntent, confidence: 0.6,
-                                            needsClarification: false, alternatives: [])
+        case .receive:
+            return ClassificationResult(intent: .receive, confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+        case .checkBalance:
+            return ClassificationResult(intent: .balance, confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+        case .showFees:
+            return ClassificationResult(intent: .feeEstimate, confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+        case .showPrice:
+            return ClassificationResult(intent: .price(currency: nil), confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+        case .showHistory:
+            return ClassificationResult(intent: .history(count: nil), confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+        case .showAddress:
+            return ClassificationResult(intent: .receive, confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+        case .showUTXO:
+            return ClassificationResult(intent: .utxoList, confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+        case .showHealth:
+            return ClassificationResult(intent: .walletHealth, confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+        case .showNetwork:
+            return ClassificationResult(intent: .networkStatus, confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+        case .confirm:
+            return ClassificationResult(intent: .confirmAction, confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+        case .cancel, .undo:
+            return ClassificationResult(intent: .cancelAction, confidence: meaning.confidence, needsClarification: false, alternatives: [], meaning: meaning)
+        case .repeatLast:
+            if let last = memory.lastUserIntent { return ClassificationResult(intent: last, confidence: 0.8, needsClarification: false, alternatives: [], meaning: meaning) }
+            return ClassificationResult(intent: .help, confidence: 0.5, needsClarification: true, alternatives: [], meaning: meaning)
+        case .explain:
+            return ClassificationResult(intent: .help, confidence: 0.7, needsClarification: false, alternatives: [], meaning: meaning)
+        case .help:
+            return ClassificationResult(intent: .help, confidence: 0.9, needsClarification: false, alternatives: [], meaning: meaning)
+        case .export:
+            return ClassificationResult(intent: .exportHistory, confidence: 0.85, needsClarification: false, alternatives: [], meaning: meaning)
+        case .bump:
+            return ClassificationResult(intent: .bumpFee(txid: nil), confidence: 0.8, needsClarification: false, alternatives: [], meaning: meaning)
+        case .refresh:
+            return ClassificationResult(intent: .refreshWallet, confidence: 0.85, needsClarification: false, alternatives: [], meaning: meaning)
+        case .hide:
+            return ClassificationResult(intent: .hideBalance, confidence: 0.85, needsClarification: false, alternatives: [], meaning: meaning)
+        case .show:
+            return ClassificationResult(intent: .showBalance, confidence: 0.85, needsClarification: false, alternatives: [], meaning: meaning)
+        case .generate:
+            return ClassificationResult(intent: .newAddress, confidence: 0.85, needsClarification: false, alternatives: [], meaning: meaning)
+        case .convert:
+            return ClassificationResult(intent: .price(currency: nil), confidence: 0.7, needsClarification: false, alternatives: [], meaning: meaning)
+        case .compare:
+            return ClassificationResult(intent: .balance, confidence: 0.8, needsClarification: false, alternatives: [], meaning: meaning)
+        case .select(let idx):
+            if let txs = memory.lastShownTransactions, idx >= 0, idx < txs.count {
+                return ClassificationResult(intent: .transactionDetail(txid: txs[idx].txid), confidence: 0.85, needsClarification: false, alternatives: [], meaning: meaning)
             }
-            return ClassificationResult(intent: .help, confidence: 0.4,
-                                        needsClarification: true, alternatives: [])
-        }
-
-        switch modifier {
-        case .fastest:
-            // "Faster" in fee context → show fee estimate
-            return ClassificationResult(intent: .feeEstimate, confidence: 0.75,
-                                        needsClarification: false, alternatives: [])
-        case .cheapest:
-            return ClassificationResult(intent: .feeEstimate, confidence: 0.75,
-                                        needsClarification: false, alternatives: [])
-        case .increase:
-            // "More" → more history or more details
-            if memory.lastUserIntent == .history(count: nil) ||
-               memory.lastShownTransactions != nil {
-                return ClassificationResult(intent: .history(count: 20), confidence: 0.7,
-                                            needsClarification: false, alternatives: [])
-            }
-            return ClassificationResult(intent: .help, confidence: 0.5,
-                                        needsClarification: true, alternatives: [])
-        case .decrease:
-            return ClassificationResult(intent: .feeEstimate, confidence: 0.6,
-                                        needsClarification: true, alternatives: [])
-        default:
-            if let lastIntent = memory.lastUserIntent {
-                return ClassificationResult(intent: lastIntent, confidence: 0.55,
-                                            needsClarification: true, alternatives: [])
-            }
-            return ClassificationResult(intent: .help, confidence: 0.4,
-                                        needsClarification: true, alternatives: [])
+            return ClassificationResult(intent: .help, confidence: 0.4, needsClarification: true, alternatives: [], meaning: meaning)
+        case .modify:
+            return ClassificationResult(intent: .send(amount: nil, unit: nil, address: nil, feeLevel: nil), confidence: 0.7, needsClarification: false, alternatives: [], meaning: meaning)
+        case .settings:
+            return ClassificationResult(intent: .settings, confidence: 0.9, needsClarification: false, alternatives: [], meaning: meaning)
+        case .about:
+            return ClassificationResult(intent: .about, confidence: 0.9, needsClarification: false, alternatives: [], meaning: meaning)
+        case .backup:
+            return ClassificationResult(intent: .settings, confidence: 0.7, needsClarification: false, alternatives: [], meaning: meaning)
         }
     }
 
     // MARK: - Evaluation Resolution
 
     @MainActor
-    private func resolveEvaluation(_ meaning: SentenceMeaning,
-                                    memory: ConversationMemory) -> ClassificationResult {
+    private func resolveEvaluation(_ meaning: SentenceMeaning, memory: ConversationMemory) -> ClassificationResult {
         guard let modifier = meaning.modifier else {
-            return ClassificationResult(intent: .help, confidence: 0.4,
-                                        needsClarification: true, alternatives: [])
+            return ClassificationResult(intent: .unknown(rawText: ""), confidence: 0.3, needsClarification: true, alternatives: [], meaning: meaning)
         }
-
         switch modifier {
+        case .enough:
+            return ClassificationResult(intent: .confirmAction, confidence: 0.7, needsClarification: false, alternatives: [], meaning: meaning)
         case .tooMuch:
-            // "Too much" — context-dependent
-            if let lastIntent = memory.lastUserIntent {
-                switch lastIntent {
-                case .feeEstimate:
-                    // Fee too high → show lower fee options
-                    return ClassificationResult(intent: .feeEstimate, confidence: 0.8,
-                                                needsClarification: false, alternatives: [])
-                case .send:
-                    // Amount too high → user may want to adjust
-                    return ClassificationResult(intent: .balance, confidence: 0.7,
-                                                needsClarification: true, alternatives: [])
-                case .balance:
-                    return ClassificationResult(intent: .help, confidence: 0.5,
-                                                needsClarification: true, alternatives: [])
-                default:
-                    break
+            if memory.lastShownFeeEstimates != nil { return ClassificationResult(intent: .feeEstimate, confidence: 0.8, needsClarification: false, alternatives: [], meaning: meaning) }
+            return ClassificationResult(intent: .balance, confidence: 0.6, needsClarification: true, alternatives: [], meaning: meaning)
+        case .tooLittle, .notEnough:
+            return ClassificationResult(intent: .balance, confidence: 0.6, needsClarification: true, alternatives: [], meaning: meaning)
+        default:
+            return ClassificationResult(intent: .unknown(rawText: ""), confidence: 0.3, needsClarification: true, alternatives: [], meaning: meaning)
+        }
+    }
+
+    // MARK: - Navigation Resolution
+
+    @MainActor
+    private func resolveNavigation(_ meaning: SentenceMeaning, memory: ConversationMemory) -> ClassificationResult {
+        guard let action = meaning.action else {
+            return ClassificationResult(intent: .help, confidence: 0.4, needsClarification: true, alternatives: [], meaning: meaning)
+        }
+        switch action {
+        case .undo:
+            return ClassificationResult(intent: .cancelAction, confidence: 0.8, needsClarification: false, alternatives: [], meaning: meaning)
+        case .repeatLast:
+            if let last = memory.lastUserIntent { return ClassificationResult(intent: last, confidence: 0.8, needsClarification: false, alternatives: [], meaning: meaning) }
+            return ClassificationResult(intent: .help, confidence: 0.5, needsClarification: true, alternatives: [], meaning: meaning)
+        case .select(let idx):
+            if let txs = memory.lastShownTransactions {
+                let safeIdx = idx == -1 ? txs.count - 1 : min(idx, txs.count - 1)
+                if safeIdx >= 0 && safeIdx < txs.count {
+                    return ClassificationResult(intent: .transactionDetail(txid: txs[safeIdx].txid), confidence: 0.85, needsClarification: false, alternatives: [], meaning: meaning)
                 }
             }
-            return ClassificationResult(intent: .help, confidence: 0.5,
-                                        needsClarification: true, alternatives: [])
-
-        case .tooLittle:
-            return ClassificationResult(intent: .balance, confidence: 0.6,
-                                        needsClarification: true, alternatives: [])
-
-        case .enough:
-            // "Good enough" / "Enough" — proceed with current action
-            return ClassificationResult(intent: .confirmAction, confidence: 0.7,
-                                        needsClarification: false, alternatives: [])
-
-        case .safest:
-            return ClassificationResult(intent: .help, confidence: 0.7,
-                                        needsClarification: false, alternatives: [])
-
+            return ClassificationResult(intent: .help, confidence: 0.4, needsClarification: true, alternatives: [], meaning: meaning)
         default:
-            return ClassificationResult(intent: .help, confidence: 0.5,
-                                        needsClarification: true, alternatives: [])
-        }
-    }
-
-    // MARK: - Action → Intent Mapping
-
-    private func mapActionToIntent(_ action: ResolvedAction, meaning: SentenceMeaning) -> WalletIntent {
-        switch action {
-        case .send:
-            // Extract amount and address from the object if available
-            var amount: Decimal?
-            var address: String?
-            if case .amount(let a) = meaning.object { amount = a }
-            if case .address(let a) = meaning.object { address = a }
-            return .send(amount: amount, unit: nil, address: address, feeLevel: nil)
-
-        case .receive:
-            return .receive
-
-        case .checkBalance:
-            return .balance
-
-        case .showFees:
-            return .feeEstimate
-
-        case .showPrice:
-            return .price(currency: nil)
-
-        case .showHistory:
-            return .history(count: nil)
-
-        case .showDetail:
-            if case .transaction(let txid) = meaning.object {
-                return .transactionDetail(txid: txid)
-            }
-            return .history(count: nil)
-
-        case .newAddress:
-            return .newAddress
-
-        case .exportHistory:
-            return .exportHistory
-
-        case .utxoList:
-            return .utxoList
-
-        case .bumpFee:
-            return .bumpFee(txid: nil)
-
-        case .networkStatus:
-            return .networkStatus
-
-        case .walletHealth:
-            return .walletHealth
-
-        case .settings:
-            return .settings
-
-        case .helpUser:
-            return .help
-
-        case .about:
-            return .about
-
-        case .confirm:
-            return .confirmAction
-
-        case .cancel:
-            return .cancelAction
-
-        case .hide:
-            return .hideBalance
-
-        case .show:
-            return .showBalance
-
-        case .refresh:
-            return .refreshWallet
-
-        case .convert:
-            if case .amount(let a) = meaning.object {
-                return .convertAmount(amount: a, fromCurrency: "USD")
-            }
-            return .price(currency: nil)
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func isDestructiveAction(_ action: ResolvedAction) -> Bool {
-        switch action {
-        case .send, .confirm, .bumpFee:
-            return true
-        default:
-            return false
+            return ClassificationResult(intent: .help, confidence: 0.4, needsClarification: true, alternatives: [], meaning: meaning)
         }
     }
 }
