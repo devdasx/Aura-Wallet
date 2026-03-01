@@ -1,12 +1,12 @@
 // MARK: - FeeEstimator.swift
 // Bitcoin AI Wallet
 //
-// Estimates Bitcoin transaction fees by querying Blockbook's estimatefee
-// endpoint and converting the returned BTC/kB values to sat/vB rates
-// for three speed tiers: fast (~1 block), medium (~2 blocks), slow (~6 blocks).
+// Estimates Bitcoin transaction fees using a two-tier approach:
+//   PRIMARY: mempool.space /api/v1/fees/recommended (returns sat/vB directly)
+//   FALLBACK: Blockbook /api/v2/estimatefee/<blocks> (returns BTC/kB, converted)
 //
-// The estimator caches results for 5 minutes and publishes state changes
-// via Combine (`@Published`) so SwiftUI views can react to updated rates.
+// Three speed tiers: fast (~1 block), medium (~2 blocks), slow (~6 blocks).
+// Caches results for 5 minutes. Publishes state via @Published for SwiftUI.
 //
 // Platform: iOS 17.0+
 // Dependencies: Foundation, Combine (via ObservableObject)
@@ -159,18 +159,21 @@ final class FeeEstimator: FeeEstimatorProtocol, ObservableObject {
 
     /// Minimum fee rate in sat/vB.
     ///
-    /// Bitcoin Core's default relay fee is 1 sat/vB. Rates below this
-    /// threshold are unlikely to propagate through the mempool.
-    private let minimumFeeRate: Decimal = 1
+    /// Many nodes enforce a minimum relay fee of 1-3 sat/vB.
+    /// Using 3 as floor to avoid "min relay fee not met" rejections.
+    private let minimumFeeRate: Decimal = 3
 
-    /// Fallback fee rate for the slow tier (6-block target) when the API is unreachable.
-    private let fallbackSlow: Decimal = 5
+    /// Fallback fee rate for the slow tier (6-block target) when all APIs are unreachable.
+    private let fallbackSlow: Decimal = 8
 
-    /// Fallback fee rate for the medium tier (2-block target) when the API is unreachable.
-    private let fallbackMedium: Decimal = 15
+    /// Fallback fee rate for the medium tier (2-block target) when all APIs are unreachable.
+    private let fallbackMedium: Decimal = 20
 
-    /// Fallback fee rate for the fast tier (1-block target) when the API is unreachable.
-    private let fallbackFast: Decimal = 30
+    /// Fallback fee rate for the fast tier (1-block target) when all APIs are unreachable.
+    private let fallbackFast: Decimal = 40
+
+    /// mempool.space API URL for recommended fees.
+    private let mempoolFeeURL = "https://mempool.space/api/v1/fees/recommended"
 
     // MARK: - Initialization
 
@@ -208,11 +211,18 @@ final class FeeEstimator: FeeEstimatorProtocol, ObservableObject {
             }
         }
 
-        logger.info("Fetching fee estimates for all tiers...")
+        logger.info("Fetching fee estimates...")
 
-        // Fetch all three tiers in parallel using structured concurrency.
-        // Each task independently handles its own errors by falling back
-        // to a default rate, so partial failures don't block the entire call.
+        // PRIMARY: Try mempool.space first (returns sat/vB directly, no conversion)
+        if let mempoolEstimates = await fetchMempoolFees() {
+            logger.info("Using mempool.space fees: fast=\(mempoolEstimates.fast.satPerVByte) med=\(mempoolEstimates.medium.satPerVByte) slow=\(mempoolEstimates.slow.satPerVByte) sat/vB")
+            await MainActor.run { self.currentEstimates = mempoolEstimates }
+            return mempoolEstimates
+        }
+
+        logger.warning("mempool.space failed, falling back to Blockbook...")
+
+        // FALLBACK: Blockbook API (BTC/kB → sat/vB conversion)
         var fastRate: Decimal = fallbackFast
         var mediumRate: Decimal = fallbackMedium
         var slowRate: Decimal = fallbackSlow
@@ -255,52 +265,78 @@ final class FeeEstimator: FeeEstimatorProtocol, ObservableObject {
                 } else {
                     failureCount += 1
                     if let error = error {
-                        logger.warning("Fee estimate for \(blocks)-block target failed: \(error.localizedDescription)")
+                        logger.warning("Blockbook fee estimate for \(blocks)-block target failed: \(error.localizedDescription)")
                     }
                 }
             }
         }
 
-        // If all three tiers failed, propagate the error
         if failureCount == 3 {
             let error = APIError.serverUnavailable
             await MainActor.run { self.lastError = error }
             logger.error("All fee estimate requests failed; using fallback rates")
-            // Still return fallback estimates rather than throwing, to keep the app functional
         }
 
         // Enforce monotonicity: fast >= medium >= slow
-        // This ensures that a higher-priority tier always has at least the rate
-        // of a lower-priority tier, even if the API returns unusual data.
-        let adjustedSlow = slowRate
+        let adjustedSlow = max(slowRate, minimumFeeRate)
         let adjustedMedium = max(mediumRate, adjustedSlow)
         let adjustedFast = max(fastRate, adjustedMedium)
 
         let estimates = FeeEstimates(
-            slow: FeeRate(
-                satPerVByte: adjustedSlow,
-                estimatedBlocks: 6,
-                estimatedMinutes: 60
-            ),
-            medium: FeeRate(
-                satPerVByte: adjustedMedium,
-                estimatedBlocks: 2,
-                estimatedMinutes: 20
-            ),
-            fast: FeeRate(
-                satPerVByte: adjustedFast,
-                estimatedBlocks: 1,
-                estimatedMinutes: 10
-            ),
+            slow: FeeRate(satPerVByte: adjustedSlow, estimatedBlocks: 6, estimatedMinutes: 60),
+            medium: FeeRate(satPerVByte: adjustedMedium, estimatedBlocks: 2, estimatedMinutes: 20),
+            fast: FeeRate(satPerVByte: adjustedFast, estimatedBlocks: 1, estimatedMinutes: 10),
             timestamp: Date()
         )
 
-        await MainActor.run {
-            self.currentEstimates = estimates
-        }
-
-        logger.info("Fee estimates updated: fast=\(adjustedFast) med=\(adjustedMedium) slow=\(adjustedSlow) sat/vB")
+        await MainActor.run { self.currentEstimates = estimates }
+        logger.info("Fee estimates (Blockbook): fast=\(adjustedFast) med=\(adjustedMedium) slow=\(adjustedSlow) sat/vB")
         return estimates
+    }
+
+    // MARK: - mempool.space API
+
+    /// Fetches fee estimates from mempool.space. Returns sat/vB directly — no conversion needed.
+    /// Response: { "fastestFee": N, "halfHourFee": N, "hourFee": N, "economyFee": N, "minimumFee": N }
+    private func fetchMempoolFees() async -> FeeEstimates? {
+        guard let url = URL(string: mempoolFeeURL) else { return nil }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                logger.warning("mempool.space returned non-200 status")
+                return nil
+            }
+
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                logger.warning("mempool.space returned invalid JSON")
+                return nil
+            }
+
+            // Extract fee rates (all in sat/vB)
+            guard let fastestFee = (json["fastestFee"] as? NSNumber)?.decimalValue,
+                  let halfHourFee = (json["halfHourFee"] as? NSNumber)?.decimalValue,
+                  let hourFee = (json["hourFee"] as? NSNumber)?.decimalValue else {
+                logger.warning("mempool.space missing required fee fields")
+                return nil
+            }
+
+            // Clamp to minimum
+            let fast = max(fastestFee, minimumFeeRate)
+            let medium = max(halfHourFee, minimumFeeRate)
+            let slow = max(hourFee, minimumFeeRate)
+
+            return FeeEstimates(
+                slow: FeeRate(satPerVByte: slow, estimatedBlocks: 6, estimatedMinutes: 60),
+                medium: FeeRate(satPerVByte: medium, estimatedBlocks: 3, estimatedMinutes: 30),
+                fast: FeeRate(satPerVByte: fast, estimatedBlocks: 1, estimatedMinutes: 10),
+                timestamp: Date()
+            )
+        } catch {
+            logger.warning("mempool.space fetch failed: \(error.localizedDescription)")
+            return nil
+        }
     }
 
     /// Estimate the fee rate for a specific confirmation target.

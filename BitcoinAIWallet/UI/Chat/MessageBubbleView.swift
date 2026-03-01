@@ -241,9 +241,11 @@ private struct AnimatedAIBubble: View {
             }
         }
         .onAppear {
-            if message.isNew && !message.isFromUser {
-                // Mark as not-new immediately so scrolling off/on won't replay
-                chatViewModel.markMessageNotNew(message.id)
+            // Guard: only animate if truly new AND not already animated.
+            // animatedMessageIDs survives SwiftUI view recreation (lives on ViewModel).
+            let alreadyAnimated = chatViewModel.animatedMessageIDs.contains(message.id)
+            if message.isNew && !message.isFromUser && !alreadyAnimated {
+                chatViewModel.markMessageAnimated(message.id)
                 animator.startTyping(message.content)
             } else {
                 animator.showInstantly(message.content)

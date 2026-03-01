@@ -47,7 +47,7 @@ struct ChatMessage: Identifiable, Equatable {
     }
 
     static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
-        lhs.id == rhs.id && lhs.content == rhs.content && lhs.isFromUser == rhs.isFromUser && lhs.responseType == rhs.responseType
+        lhs.id == rhs.id && lhs.content == rhs.content && lhs.isFromUser == rhs.isFromUser && lhs.responseType == rhs.responseType && lhs.isNew == rhs.isNew
     }
 
     static func user(_ text: String) -> ChatMessage {
@@ -144,6 +144,10 @@ final class ChatViewModel: ObservableObject {
 
     /// Guard against double-broadcast from rapid taps.
     private var isBroadcasting: Bool = false
+
+    /// Tracks message IDs that have already played their typing animation.
+    /// Prevents re-animation when SwiftUI recreates cells in LazyVStack.
+    private(set) var animatedMessageIDs: Set<UUID> = []
 
     // MARK: - Wallet State (injected by parent)
 
@@ -667,7 +671,10 @@ final class ChatViewModel: ObservableObject {
     }
 
     /// Marks a message as no longer new so its typing animation won't replay on scroll.
-    func markMessageNotNew(_ messageId: UUID) {
+    /// Also tracks the ID in `animatedMessageIDs` as a bulletproof guard against
+    /// SwiftUI recreating the cell with a stale `isNew` value.
+    func markMessageAnimated(_ messageId: UUID) {
+        animatedMessageIDs.insert(messageId)
         if let index = messages.firstIndex(where: { $0.id == messageId }) {
             messages[index].isNew = false
         }

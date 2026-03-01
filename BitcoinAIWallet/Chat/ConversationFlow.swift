@@ -75,7 +75,7 @@ final class ConversationFlow: ObservableObject {
 
     private static let satoshisPerBTC: Decimal = 100_000_000
     private static let typicalVSize: Int = 140
-    private static let defaultFeeRate: Decimal = 15
+    private static let defaultFeeRate: Decimal = 20
 
     /// Live fee estimates from the network.
     var liveFeeEstimates: (slow: Decimal, medium: Decimal, fast: Decimal)?
@@ -372,9 +372,9 @@ final class ConversationFlow: ObservableObject {
             }
         }
         switch level {
-        case .slow: return 5
+        case .slow: return 8
         case .medium, .custom: return Self.defaultFeeRate
-        case .fast: return 30
+        case .fast: return 40
         }
     }
 

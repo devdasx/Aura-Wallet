@@ -392,7 +392,6 @@ final class ResponseGenerator {
         let remainingBalance = max(walletBalance - sendAmount - feeBTC, Decimal.zero)
 
         return [
-            .text(ResponseTemplates.sendConfirmation()),
             .sendConfirmCard(
                 toAddress: resolvedAddress,
                 amount: sendAmount,
@@ -411,9 +410,7 @@ final class ResponseGenerator {
             return [.errorText(ResponseTemplates.walletNotReady())]
         }
         let addressType = context.addressType ?? "SegWit"
-        let textResponse = ResponseTemplates.receiveAddress(address: address, type: addressType)
         return [
-            .text(textResponse),
             .receiveCard(address: address, addressType: addressType),
         ]
     }
