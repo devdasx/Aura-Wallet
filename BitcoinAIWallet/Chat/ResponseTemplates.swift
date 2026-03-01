@@ -40,8 +40,8 @@ struct ResponseTemplates {
         if hour < 12 {
             return pick([
                 "Good morning! What can I help you with?",
-                "Morning! Ready to check your wallet?",
-                "Good morning. How's your wallet looking today?",
+                "Morning! How can I help?",
+                "Good morning! What would you like to do?",
             ])
         } else if hour < 17 {
             return pick([

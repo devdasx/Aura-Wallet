@@ -100,6 +100,9 @@ enum WordType: Equatable {
     case bitcoinNoun(BitcoinConcept)
     case bitcoinUnit
 
+    // Social
+    case greeting
+
     // Emotion
     case emotion(EmotionType)
 
@@ -150,11 +153,14 @@ final class WordClassifier {
             ("good enough", "good_enough"), ("sounds good", "sounds_good"),
             ("the second", "ordinal_2"), ("the third", "ordinal_3"),
             ("the first", "ordinal_1"), ("the last", "ordinal_last"),
+            // Greetings
+            ("good morning", "good_morning"), ("good afternoon", "good_afternoon"),
+            ("good evening", "good_evening"),
             // Arabic
             ("كم عندي", "how_much_ar"), ("نفس العنوان", "same_address_ar"),
             ("نفس المبلغ", "same_amount_ar"),
             // Spanish
-            ("cuánto tengo", "how_much_es"),
+            ("cuánto tengo", "how_much_es"), ("buenos días", "buenos_días"),
         ]
         for (phrase, token) in phrases {
             result = result.replacingOccurrences(of: phrase, with: token)
@@ -300,6 +306,14 @@ final class WordClassifier {
                    "نعم", "أكيد", "تمام", "موافق", "يلا",
                    "sí", "si", "dale", "claro", "correcto"] {
             d[w] = .affirmation
+        }
+
+        // ── Greetings ──
+        for w in ["hi", "hello", "hey", "yo", "sup", "howdy",
+                   "good_morning", "good_afternoon", "good_evening",
+                   "morning", "afternoon", "evening",
+                   "مرحبا", "أهلا", "السلام", "hola", "buenos_días"] {
+            d[w] = .greeting
         }
 
         // ── Bitcoin Nouns ──

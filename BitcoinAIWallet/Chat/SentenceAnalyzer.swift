@@ -83,6 +83,12 @@ final class SentenceAnalyzer {
         // ── RULE 1: Single word ──
         if classified.count == 1 { return analyzeSingleWord(classified[0], isQuestion: isQuestion, memory: memory) }
 
+        // ── RULE 1b: Greeting (multi-word: "hi there", "hello how are you") ──
+        let hasGreeting = classified.contains { if case .greeting = $0.type { return true }; return false }
+        if hasGreeting && classified.allSatisfy({ isGreetingOrNoise($0.type) }) {
+            return SentenceMeaning(type: .emotional, action: nil, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: false, confidence: 0.9)
+        }
+
         // ── RULE 2: Pure emotion ──
         if emotion != nil && classified.allSatisfy({ isEmotionOrNoise($0.type) }) {
             return SentenceMeaning(type: .emotional, action: nil, subject: nil, object: nil, modifier: nil, emotion: emotion, isNegated: false, confidence: 0.9)
@@ -277,6 +283,7 @@ final class SentenceAnalyzer {
         case .questionWord(let q): return analyzeQuestionWordSync(q)
         case .bitcoinAddress: return SentenceMeaning(type: .bare, action: .send, subject: nil, object: .address, modifier: nil, emotion: nil, isNegated: false, confidence: 0.6)
         case .bitcoinUnit: return SentenceMeaning(type: .question, action: .showPrice, subject: nil, object: .price, modifier: nil, emotion: nil, isNegated: false, confidence: 0.6)
+        case .greeting: return SentenceMeaning(type: .emotional, action: nil, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: false, confidence: 0.9)
         default: return SentenceMeaning(type: .empty, action: nil, subject: nil, object: nil, modifier: nil, emotion: nil, isNegated: false, confidence: 0.2)
         }
     }
@@ -388,6 +395,7 @@ final class SentenceAnalyzer {
 
     // MARK: - Helpers
 
+    private func isGreetingOrNoise(_ t: WordType) -> Bool { if case .greeting = t { return true }; if case .unknown = t { return true }; return isNoise(t) }
     private func isEmotionOrNoise(_ t: WordType) -> Bool { if case .emotion = t { return true }; return isNoise(t) }
     private func isAffOrNeg(_ t: WordType) -> Bool { if case .affirmation = t { return true }; if case .negation = t { return true }; return false }
     private func isNoise(_ t: WordType) -> Bool { if case .article = t { return true }; if case .preposition = t { return true }; if case .conjunction = t { return true }; return false }
